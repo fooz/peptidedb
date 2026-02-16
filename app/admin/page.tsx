@@ -4,6 +4,7 @@ import {
   addCitationClaimAction,
   addDosingAction,
   addUseCaseAction,
+  deleteCitationClaimAction,
   upsertPeptideAction,
   upsertSafetyAction,
   upsertVendorAction,
@@ -421,6 +422,7 @@ export default async function AdminPage({ searchParams }: PageProps) {
                 <th>Grade</th>
                 <th>Source</th>
                 <th>Published</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -435,6 +437,15 @@ export default async function AdminPage({ searchParams }: PageProps) {
                     </a>
                   </td>
                   <td>{claim.publishedAt}</td>
+                  <td>
+                    <form action={deleteCitationClaimAction}>
+                      <input type="hidden" name="claimId" value={String(claim.id)} />
+                      <input type="hidden" name="editPeptideSlug" value={selectedPeptide.slug} />
+                      <button className="btn" type="submit">
+                        Remove
+                      </button>
+                    </form>
+                  </td>
                 </tr>
               ))}
             </tbody>

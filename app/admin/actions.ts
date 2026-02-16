@@ -338,6 +338,61 @@ export async function addCitationClaimAction(formData: FormData) {
   }
 }
 
+export async function deleteCitationClaimAction(formData: FormData) {
+  await assertAdminAuth();
+  try {
+    const supabase = requireSupabaseAdmin();
+    const claimId = Number(clean(formData.get("claimId")));
+    const editPeptideSlug = clean(formData.get("editPeptideSlug"));
+
+    if (!claimId) {
+      redirectNotice("Claim id is required.", "error");
+    }
+
+    const { data: existingClaim, error: findError } = await supabase
+      .from("peptide_claims")
+      .select("citation_id")
+      .eq("id", claimId)
+      .maybeSingle();
+
+    if (findError) {
+      throw new Error(findError.message);
+    }
+    if (!existingClaim) {
+      throw new Error("Claim not found.");
+    }
+
+    const citationId = Number(existingClaim.citation_id ?? 0);
+
+    const { error: deleteClaimError } = await supabase.from("peptide_claims").delete().eq("id", claimId);
+    if (deleteClaimError) {
+      throw new Error(deleteClaimError.message);
+    }
+
+    if (citationId) {
+      const { count, error: citationCountError } = await supabase
+        .from("peptide_claims")
+        .select("id", { count: "exact", head: true })
+        .eq("citation_id", citationId);
+
+      if (!citationCountError && (count ?? 0) === 0) {
+        await supabase.from("citations").delete().eq("id", citationId);
+      }
+    }
+
+    if (editPeptideSlug) {
+      redirect(
+        `/admin?kind=success&notice=${encodeURIComponent("Citation claim removed.")}&editPeptide=${encodeURIComponent(editPeptideSlug)}`
+      );
+    }
+    redirectNotice("Citation claim removed.");
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    const message = error instanceof Error ? error.message : "Failed to remove citation claim.";
+    redirectNotice(message, "error");
+  }
+}
+
 export async function upsertVendorAction(formData: FormData) {
   await assertAdminAuth();
   try {
