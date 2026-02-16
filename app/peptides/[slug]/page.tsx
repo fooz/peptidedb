@@ -184,7 +184,11 @@ export default async function PeptideDetailPage({ params }: PageProps) {
         <div className="grid two">
           {peptide.vendors.map((vendor) => (
             <article className="card" key={vendor.slug} itemScope itemType="https://schema.org/Organization">
-              <h3 itemProp="name">{vendor.name}</h3>
+              <h3 itemProp="name">
+                <Link href={`/vendors/${vendor.slug}`} itemProp="url">
+                  {vendor.name}
+                </Link>
+              </h3>
               <p>
                 Rating: <strong><StarRating rating={vendor.rating} idPrefix={`peptide-vendor-${vendor.slug}`} /></strong>
               </p>

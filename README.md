@@ -63,7 +63,9 @@ Consumer-first peptide reference database with embedded clinical sections, evide
 - One-click expanded dataset ingest button in `/admin`
 - One-click live evidence refresh button in `/admin` (PubMed + ClinicalTrials)
 - One-click high-volume ClinicalTrials catalog ingest in `/admin` (targets hundreds of peptide entries)
+- One-click vendor website ingest in `/admin` (known vendor sites -> vendor pages + peptide listings)
 - Evidence and references section on peptide detail pages
+- Vendor profile pages at `/vendors/[slug]` with features, trust signals, and linked peptide listings
 - Supabase-backed reads with fallback data if tables are empty
 - Health endpoint: `/api/health`
 

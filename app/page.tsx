@@ -88,7 +88,7 @@ export default async function HomePage() {
             {topRatedVendors.map((vendor, index) => (
               <Link
                 key={vendor.slug}
-                href={`/vendors?q=${encodeURIComponent(vendor.name)}`}
+                href={`/vendors/${vendor.slug}`}
                 className="subtle-link home-vendor-link"
                 itemProp="itemListElement"
                 itemScope

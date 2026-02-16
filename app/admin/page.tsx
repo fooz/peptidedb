@@ -8,6 +8,7 @@ import {
   deleteCitationClaimAction,
   ingestClinicalTrialsCatalogAction,
   ingestExpandedDatasetAction,
+  ingestVendorWebsiteCatalogAction,
   refreshLiveEvidenceAction,
   upsertPeptideAction,
   upsertSafetyAction,
@@ -81,6 +82,7 @@ export default async function AdminPage({ searchParams }: PageProps) {
             ingestExpandedDatasetAction={ingestExpandedDatasetAction}
             refreshLiveEvidenceAction={refreshLiveEvidenceAction}
             ingestClinicalTrialsCatalogAction={ingestClinicalTrialsCatalogAction}
+            ingestVendorWebsiteCatalogAction={ingestVendorWebsiteCatalogAction}
           />
         </div>
         {notice ? <p className={`notice ${kind === "error" ? "error" : "success"}`}>{notice}</p> : null}

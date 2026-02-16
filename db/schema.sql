@@ -114,6 +114,15 @@ CREATE TABLE vendors (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE vendor_profiles (
+  vendor_id BIGINT PRIMARY KEY REFERENCES vendors(id) ON DELETE CASCADE,
+  description TEXT,
+  features TEXT[] NOT NULL DEFAULT '{}',
+  trust_signals TEXT[] NOT NULL DEFAULT '{}',
+  source_urls TEXT[] NOT NULL DEFAULT '{}',
+  regions TEXT[] NOT NULL DEFAULT '{}'
+);
+
 CREATE TABLE vendor_verifications (
   id BIGSERIAL PRIMARY KEY,
   vendor_id BIGINT NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,

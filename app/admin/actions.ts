@@ -7,6 +7,7 @@ import { ingestClinicalTrialsCatalog } from "@/lib/clinicaltrials-catalog-ingest
 import { ingestExpandedPeptideDataset } from "@/lib/expanded-dataset-ingest";
 import { refreshLiveEvidenceClaims } from "@/lib/live-evidence-refresh";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
+import { ingestVendorWebsiteCatalog } from "@/lib/vendor-website-ingest";
 
 function clean(value: FormDataEntryValue | null): string {
   return String(value ?? "").trim();
@@ -429,12 +430,28 @@ export async function ingestClinicalTrialsCatalogAction() {
   try {
     const supabase = requireSupabaseAdmin();
     const result = await ingestClinicalTrialsCatalog(supabase, { target: 320, maxPages: 8 });
+    const vendorResult = await ingestVendorWebsiteCatalog(supabase);
     redirectNotice(
-      `ClinicalTrials catalog ingest complete: ${result.inserted} new peptides inserted, ${result.skippedExisting} already existed, ${result.candidatesFound} candidates found from ${result.scannedStudies} studies.`
+      `ClinicalTrials + vendor ingest complete: ${result.inserted} new peptides, ${vendorResult.vendorsProcessed} vendors processed, ${vendorResult.listingsUpserted} vendor listings upserted.`
     );
   } catch (error) {
     rethrowIfRedirectError(error);
     const message = error instanceof Error ? error.message : "Failed to ingest ClinicalTrials peptide catalog.";
+    redirectNotice(message, "error");
+  }
+}
+
+export async function ingestVendorWebsiteCatalogAction() {
+  await assertAdminAuth();
+  try {
+    const supabase = requireSupabaseAdmin();
+    const result = await ingestVendorWebsiteCatalog(supabase);
+    redirectNotice(
+      `Vendor website ingest complete: ${result.vendorsProcessed} vendors processed, ${result.listingsUpserted} listings upserted, ${result.peptidesCreated} peptides created, ${result.sourcePagesFailed} source pages failed.`
+    );
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    const message = error instanceof Error ? error.message : "Failed to ingest vendor websites.";
     redirectNotice(message, "error");
   }
 }

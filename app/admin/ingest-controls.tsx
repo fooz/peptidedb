@@ -6,6 +6,7 @@ type IngestControlsProps = {
   ingestExpandedDatasetAction: () => Promise<void>;
   refreshLiveEvidenceAction: () => Promise<void>;
   ingestClinicalTrialsCatalogAction: () => Promise<void>;
+  ingestVendorWebsiteCatalogAction: () => Promise<void>;
 };
 
 type IngestCardProps = {
@@ -66,7 +67,8 @@ function IngestCard({ action, title, description, idleLabel, pendingLabel, prima
 export function IngestControls({
   ingestExpandedDatasetAction,
   refreshLiveEvidenceAction,
-  ingestClinicalTrialsCatalogAction
+  ingestClinicalTrialsCatalogAction,
+  ingestVendorWebsiteCatalogAction
 }: IngestControlsProps) {
   return (
     <div className="ingest-controls">
@@ -91,6 +93,13 @@ export function IngestControls({
         description="Imports a large investigational peptide catalog from ClinicalTrials intervention records."
         idleLabel="Import Hundreds From ClinicalTrials"
         pendingLabel="Importing Hundreds..."
+      />
+      <IngestCard
+        action={ingestVendorWebsiteCatalogAction}
+        title="Vendor Website Catalog"
+        description="Researches known vendor websites, ingests vendor pages, and links offered peptides."
+        idleLabel="Ingest Vendor Website Listings"
+        pendingLabel="Ingesting Vendor Listings..."
       />
     </div>
   );

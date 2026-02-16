@@ -73,7 +73,7 @@ export default async function VendorsPage({ searchParams }: PageProps) {
         item: {
           "@type": "Organization",
           name: vendor.name,
-          url: absoluteUrl(`/vendors?q=${encodeURIComponent(vendor.name)}`),
+          url: absoluteUrl(`/vendors/${vendor.slug}`),
           ...(vendor.rating !== null
             ? {
                 aggregateRating: {
@@ -168,7 +168,11 @@ export default async function VendorsPage({ searchParams }: PageProps) {
       <div className="grid two">
         {filtered.map((vendor) => (
           <article key={vendor.slug} className="card" itemScope itemType="https://schema.org/Organization">
-            <h2 itemProp="name">{vendor.name}</h2>
+            <h2 itemProp="name">
+              <Link href={`/vendors/${vendor.slug}`} itemProp="url">
+                {vendor.name}
+              </Link>
+            </h2>
             <p>
               Rating: <strong><StarRating rating={vendor.rating} idPrefix={`vendor-${vendor.slug}`} /></strong>
             </p>

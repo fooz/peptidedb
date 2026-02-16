@@ -1,5 +1,6 @@
 import { getAllPeptides, getAllVendors, getPeptideBySlug } from "@/lib/mock-data";
 import { getSupabaseClient } from "@/lib/supabase";
+import { getVendorSeedMetadata } from "@/lib/vendor-website-ingest";
 import type {
   DosingEntry,
   EvidenceClaim,
@@ -9,7 +10,9 @@ import type {
   PeptideSummary,
   RegulatoryStatus,
   SafetyProfile,
-  VendorCard
+  VendorCard,
+  VendorDetail,
+  VendorPeptideListing
 } from "@/lib/types";
 
 const JURISDICTION_CODES: JurisdictionCode[] = ["US", "EU", "UK", "CA", "AU"];
@@ -585,4 +588,107 @@ export async function listVendors(): Promise<VendorCard[]> {
     .filter((vendor): vendor is VendorCard => vendor !== null);
 
   return mapped.length > 0 ? mapped : fallback;
+}
+
+export async function getVendorDetail(slug: string): Promise<VendorDetail | null> {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return null;
+  }
+
+  const { data: vendorRow, error: vendorError } = await supabase
+    .from("vendors")
+    .select("id,slug,name,website_url,is_published")
+    .eq("slug", slug)
+    .eq("is_published", true)
+    .maybeSingle();
+
+  if (vendorError || !vendorRow) {
+    return null;
+  }
+
+  const vendorId = Number(vendorRow.id ?? 0);
+  if (!vendorId) {
+    return null;
+  }
+
+  const [{ data: profileRow }, { data: listingRows }, { data: ratingRows }, { data: verificationRows }] = await Promise.all([
+    supabase
+      .from("vendor_profiles")
+      .select("description,features,trust_signals,source_urls,regions")
+      .eq("vendor_id", vendorId)
+      .maybeSingle(),
+    supabase
+      .from("vendor_peptide_listings")
+      .select("peptide_id,peptides(slug,canonical_name,peptide_class,is_published)")
+      .eq("vendor_id", vendorId),
+    supabase
+      .from("vendor_rating_snapshots")
+      .select("rating,confidence,reason_tags")
+      .eq("vendor_id", vendorId)
+      .eq("is_current", true)
+      .limit(1),
+    supabase.from("vendor_verifications").select("verification_type,value").eq("vendor_id", vendorId)
+  ]);
+
+  const profile = asRecord(profileRow);
+  const seedMetadata = getVendorSeedMetadata(slug);
+  const rating = asRecord(asArray(ratingRows)[0]);
+
+  const ratingTags = asArray(rating?.reason_tags)
+    .map((tag) => asString(tag))
+    .filter((tag): tag is string => Boolean(tag));
+
+  const trustSignals = uniqueStrings([
+    ...asArray(profile?.trust_signals).map((signal) => asString(signal)).filter((signal): signal is string => Boolean(signal)),
+    ...(seedMetadata?.trustSignals ?? []),
+    ...ratingTags,
+    ...asArray(verificationRows)
+      .map((row) => asRecord(row))
+      .filter((row): row is Record<string, unknown> => row !== null)
+      .map((row) => asString(row.verification_type))
+      .filter((signal): signal is string => Boolean(signal))
+  ]);
+
+  const availablePeptides: VendorPeptideListing[] = asArray(listingRows)
+    .map((row) => {
+      const listing = asRecord(row);
+      const peptide = firstRelation(listing?.peptides);
+      const peptideSlug = asString(peptide?.slug);
+      const peptideName = asString(peptide?.canonical_name);
+      const peptideClass = asString(peptide?.peptide_class) ?? "Not specified";
+      const peptidePublished = peptide?.is_published === true;
+      if (!peptideSlug || !peptideName || !peptidePublished) {
+        return null;
+      }
+      return {
+        slug: peptideSlug,
+        name: peptideName,
+        className: peptideClass
+      } satisfies VendorPeptideListing;
+    })
+    .filter((item): item is VendorPeptideListing => item !== null)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  return {
+    slug: asString(vendorRow.slug) ?? slug,
+    name: asString(vendorRow.name) ?? "Unknown vendor",
+    websiteUrl: asString(vendorRow.website_url) ?? "",
+    description:
+      asString(profile?.description) ??
+      seedMetadata?.description ??
+      "Vendor profile text has not been curated yet for this listing.",
+    features: uniqueStrings([
+      ...asArray(profile?.features)
+      .map((feature) => asString(feature))
+      .filter((feature): feature is string => Boolean(feature)),
+      ...(seedMetadata?.features ?? [])
+    ]),
+    trustSignals,
+    availablePeptides,
+    rating: asNumber(rating?.rating),
+    confidence: asNumber(rating?.confidence),
+    reasonTags: ratingTags.length > 0 ? ratingTags : trustSignals,
+    isAffiliate: false
+  };
 }

@@ -40,6 +40,20 @@ export interface VendorCard {
   isAffiliate: boolean;
 }
 
+export interface VendorPeptideListing {
+  slug: string;
+  name: string;
+  className: string;
+}
+
+export interface VendorDetail extends VendorCard {
+  websiteUrl: string;
+  description: string;
+  features: string[];
+  trustSignals: string[];
+  availablePeptides: VendorPeptideListing[];
+}
+
 export interface EvidenceClaim {
   section: string;
   claimText: string;
