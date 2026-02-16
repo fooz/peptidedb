@@ -55,8 +55,12 @@ export const peptideData: PeptideDetail[] = [
       "Activates GLP-1 receptors to improve insulin secretion, reduce glucagon output, slow gastric emptying, and influence satiety pathways.",
     effectivenessSummary:
       "Strong efficacy in approved indications with consistent RCT evidence; durability depends on adherence and long-term management context.",
-    safety:
-      "Frequent gastrointestinal adverse effects; monitor for pancreatitis signs and contraindications based on patient history.",
+    safety: {
+      adverseEffects: "Frequent gastrointestinal adverse effects, especially during dose escalation.",
+      contraindications: "Contraindications should be screened using current label guidance and patient history.",
+      interactions: "Review concomitant glucose-lowering therapies and delayed gastric emptying considerations.",
+      monitoring: "Track tolerability, adherence, glycemic response, and any severe or persistent symptoms."
+    },
     longDescription:
       "Clinical evidence is strongest for approved use cases. Study-reported outcomes in additional populations should be interpreted with trial design and endpoint limitations in mind.",
     dosing: [
@@ -119,8 +123,12 @@ export const peptideData: PeptideDetail[] = [
       "Proposed mechanisms include angiogenic and tissue signaling effects, but translational certainty in humans is still low.",
     effectivenessSummary:
       "Current data does not provide robust, broadly generalizable efficacy conclusions for most claimed consumer use cases.",
-    safety:
-      "Safety profile is not well established in large controlled human studies; product quality variability is a major practical risk.",
+    safety: {
+      adverseEffects: "Human adverse-effect profile is not well established in large controlled trials.",
+      contraindications: "Definitive contraindication frameworks are not yet fully established.",
+      interactions: "Interaction profile remains uncertain due to limited and heterogeneous evidence.",
+      monitoring: "Use protocol-level monitoring and careful source-quality review in investigational contexts."
+    },
     longDescription:
       "For investigational peptides, this database separates study findings from approved treatment guidance and flags lower-certainty evidence.",
     dosing: [

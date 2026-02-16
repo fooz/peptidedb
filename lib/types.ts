@@ -50,12 +50,19 @@ export interface EvidenceClaim {
   retrievedAt: string | null;
 }
 
+export interface SafetyProfile {
+  adverseEffects: string;
+  contraindications: string;
+  interactions: string;
+  monitoring: string;
+}
+
 export interface PeptideDetail extends PeptideSummary {
   intro: string;
   featureTable: Record<string, string>;
   mechanism: string;
   effectivenessSummary: string;
-  safety: string;
+  safety: SafetyProfile;
   longDescription: string;
   dosing: DosingEntry[];
   vendors: VendorCard[];

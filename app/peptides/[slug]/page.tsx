@@ -102,7 +102,24 @@ export default async function PeptideDetailPage({ params }: PageProps) {
 
       <section className="card">
         <h2>Safety</h2>
-        <p>{peptide.safety}</p>
+        <div className="safety-grid">
+          <article className="safety-item">
+            <h3>Adverse Effects</h3>
+            <p>{peptide.safety.adverseEffects}</p>
+          </article>
+          <article className="safety-item">
+            <h3>Contraindications</h3>
+            <p>{peptide.safety.contraindications}</p>
+          </article>
+          <article className="safety-item">
+            <h3>Interactions</h3>
+            <p>{peptide.safety.interactions}</p>
+          </article>
+          <article className="safety-item">
+            <h3>Monitoring</h3>
+            <p>{peptide.safety.monitoring}</p>
+          </article>
+        </div>
       </section>
 
       <section className="card">

@@ -8,6 +8,7 @@ import type {
   PeptideDetail,
   PeptideSummary,
   RegulatoryStatus,
+  SafetyProfile,
   VendorCard
 } from "@/lib/types";
 
@@ -218,20 +219,23 @@ function mapDosing(rows: unknown[]): DosingEntry[] {
     .filter((entry): entry is DosingEntry => entry !== null);
 }
 
-function formatSafetySummary(rows: unknown[]): string {
+function mapSafetyProfile(rows: unknown[]): SafetyProfile {
   const first = asRecord(rows[0]);
   if (!first) {
-    return "No safety summary has been curated yet.";
+    return {
+      adverseEffects: "Not curated yet.",
+      contraindications: "Not curated yet.",
+      interactions: "Not curated yet.",
+      monitoring: "Not curated yet."
+    };
   }
 
-  const segments = [
-    asString(first.adverse_effects) ? `Adverse effects: ${asString(first.adverse_effects)}.` : null,
-    asString(first.contraindications) ? `Contraindications: ${asString(first.contraindications)}.` : null,
-    asString(first.interactions) ? `Interactions: ${asString(first.interactions)}.` : null,
-    asString(first.monitoring) ? `Monitoring: ${asString(first.monitoring)}.` : null
-  ].filter((segment): segment is string => Boolean(segment));
-
-  return segments.length > 0 ? segments.join(" ") : "No safety summary has been curated yet.";
+  return {
+    adverseEffects: asString(first.adverse_effects) ?? "Not curated yet.",
+    contraindications: asString(first.contraindications) ?? "Not curated yet.",
+    interactions: asString(first.interactions) ?? "Not curated yet.",
+    monitoring: asString(first.monitoring) ?? "Not curated yet."
+  };
 }
 
 type VendorRatingMap = Map<number, { rating: number | null; confidence: number | null; reasonTags: string[] }>;
@@ -375,7 +379,7 @@ export async function getPeptideDetail(slug: string): Promise<PeptideDetail | nu
   const profile = firstRelation(row.peptide_profiles);
   const useCaseData = collectUseCaseData(asArray(row.peptide_use_cases));
   const dosing = mapDosing(asArray(row.peptide_dosing_entries));
-  const safety = formatSafetySummary(asArray(row.peptide_safety_entries));
+  const safety = mapSafetyProfile(asArray(row.peptide_safety_entries));
   const { data: claimRows } = await supabase
     .from("peptide_claims")
     .select("section,claim_text,evidence_grade,citations(source_url,source_title,published_at,retrieved_at)")
@@ -450,9 +454,7 @@ export async function getPeptideDetail(slug: string): Promise<PeptideDetail | nu
     "Long-form monograph content is in progress for this peptide.";
 
   const commonConcerns =
-    asArray(row.peptide_safety_entries)
-      .map((safetyRow) => asString(asRecord(safetyRow)?.adverse_effects))
-      .find((value): value is string => Boolean(value)) ?? "Not specified";
+    safety.adverseEffects && safety.adverseEffects !== "Not curated yet." ? safety.adverseEffects : "Not specified";
 
   return {
     ...summary,
