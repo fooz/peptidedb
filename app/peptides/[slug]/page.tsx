@@ -124,9 +124,13 @@ export default async function PeptideDetailPage({ params }: PageProps) {
       <section className="card">
         <h2>Use Cases</h2>
         {peptide.useCases.map((useCase) => (
-          <span key={useCase} className="chip">
+          <Link
+            key={useCase}
+            className="chip chip-link"
+            href={`/peptides?useCase=${encodeURIComponent(useCase)}`}
+          >
             {useCase}
-          </span>
+          </Link>
         ))}
       </section>
 
