@@ -169,7 +169,7 @@ function buildGeneratedProfile(name: string) {
     effectiveness:
       `Effectiveness for ${name} is not assumed from listing volume alone. This record is intended to organize trial-linked evidence and prevent unsupported consumer-level certainty.`,
     longDescription:
-      `${name} was imported from ClinicalTrials.gov intervention data to rapidly expand peptide coverage and support evidence-first navigation. This profile is intentionally conservative: it marks the entry as investigational by default across jurisdictions until manual review confirms approval pathways or higher-certainty outcomes. The purpose is to help users and clinicians find what is being studied, while clearly separating study presence from proven effectiveness. Dosing and safety details are stored as research-context placeholders and should be replaced with source-specific updates during editorial curation.`
+      `${name} is currently tracked as an investigational peptide with evidence-first review across jurisdictions. This profile is intentionally conservative: it marks the entry as investigational by default across jurisdictions until manual review confirms approval pathways or higher-certainty outcomes. The purpose is to help users and clinicians find what is being studied, while clearly separating study presence from proven effectiveness. Dosing and safety details are stored as research-context placeholders and should be replaced with source-specific updates during editorial curation.`
   };
 }
 
@@ -445,7 +445,7 @@ export async function ingestClinicalTrialsCatalog(
         jurisdiction_id: usJurisdictionId,
         evidence_grade: "I",
         consumer_summary:
-          "Auto-imported from clinical trial intervention records. Editorial review required before treatment-level interpretation.",
+          "Mapped from clinical trial intervention records. Editorial review is required before treatment-level interpretation.",
         clinical_summary:
           "Investigational evidence-tracking entry. Presence in trials should not be interpreted as established efficacy."
       };
@@ -559,7 +559,7 @@ export async function ingestClinicalTrialsCatalog(
       return {
         peptide_id: peptideId,
         section: "Research",
-        claim_text: `Auto-ingested from ClinicalTrials intervention catalog. ${candidate.name} appears in trial records and requires editorial evidence review.`,
+        claim_text: `${candidate.name} appears in trial records and requires editorial evidence review.`,
         evidence_grade: "I",
         citation_id: citationId
       };
