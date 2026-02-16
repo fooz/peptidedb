@@ -22,30 +22,21 @@ export default async function AdminLoginPage({ searchParams }: PageProps) {
   const error = getFirst(resolvedSearchParams?.error);
 
   return (
-    <div className="grid" style={{ maxWidth: 560, margin: "0 auto" }}>
-      <section className="card">
-        <h1 style={{ marginTop: 0 }}>Admin Login</h1>
-        <p className="muted">This area controls peptide and vendor content.</p>
-        {error ? (
-          <p style={{ color: "#b91c1c", marginTop: 0 }}>
-            <strong>{error}</strong>
-          </p>
-        ) : null}
-        <form action={loginAdminAction} className="grid">
+    <div className="auth-wrap grid">
+      <section className="card hero">
+        <h1>Admin Login</h1>
+        <p className="muted">Secure area for publishing peptide and vendor content.</p>
+        {error ? <p className="notice error">{error}</p> : null}
+        <form action={loginAdminAction} className="form-grid">
           <label>
             Username
-            <input name="username" autoComplete="username" style={{ width: "100%", marginTop: "0.35rem" }} />
+            <input name="username" autoComplete="username" />
           </label>
           <label>
             Password
-            <input
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              style={{ width: "100%", marginTop: "0.35rem" }}
-            />
+            <input name="password" type="password" autoComplete="current-password" />
           </label>
-          <button className="btn" type="submit">
+          <button className="btn primary" type="submit">
             Sign In
           </button>
         </form>

@@ -16,13 +16,13 @@ import { getAdminDashboardData } from "@/lib/admin-repository";
 type SearchValue = string | string[] | undefined;
 type SearchParams = Record<string, SearchValue>;
 
-function firstParam(value: SearchValue): string {
-  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
-}
-
 type PageProps = {
   searchParams: Promise<SearchParams | undefined>;
 };
+
+function firstParam(value: SearchValue): string {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
 
 export default async function AdminPage({ searchParams }: PageProps) {
   await requireAdminAuth();
@@ -36,16 +36,18 @@ export default async function AdminPage({ searchParams }: PageProps) {
 
   const selectedPeptide = data.selectedPeptide;
   const selectedVendor = data.selectedVendor;
+  const jurisdictions =
+    data.jurisdictions.length > 0
+      ? data.jurisdictions
+      : JURISDICTIONS.map((code) => ({ code, name: code }));
 
   return (
-    <div className="grid">
-      <section className="card">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.8rem" }}>
+    <div className="admin-shell">
+      <section className="card hero">
+        <div className="admin-header-row">
           <div>
-            <h1 style={{ marginTop: 0 }}>Admin Dashboard</h1>
-            <p className="muted" style={{ marginBottom: 0 }}>
-              Create, edit, and publish peptides and vendors.
-            </p>
+            <h1>Admin Dashboard</h1>
+            <p className="muted">Create, edit, and publish peptides and vendors.</p>
           </div>
           <form action={logoutAdminAction}>
             <button className="btn" type="submit">
@@ -53,47 +55,62 @@ export default async function AdminPage({ searchParams }: PageProps) {
             </button>
           </form>
         </div>
-        {notice ? (
-          <p style={{ color: kind === "error" ? "#b91c1c" : "#0f766e", marginBottom: 0 }}>
-            <strong>{notice}</strong>
-          </p>
-        ) : null}
+        <div className="meta-row">
+          <span className="kpi-pill">{data.peptides.length} peptides</span>
+          <span className="kpi-pill">{data.vendors.length} vendors</span>
+          <span className="kpi-pill">{data.supabaseConfigured ? "Supabase connected" : "Supabase missing config"}</span>
+        </div>
+        {notice ? <p className={`notice ${kind === "error" ? "error" : "success"}`}>{notice}</p> : null}
       </section>
 
       {!data.supabaseConfigured ? (
         <section className="card">
-          <p style={{ color: "#b91c1c", margin: 0 }}>
-            <strong>Missing server setup:</strong> add `SUPABASE_SERVICE_ROLE_KEY` in Vercel before admin writes will
-            work.
+          <p className="notice error">
+            Missing server setup: add <code>SUPABASE_SERVICE_ROLE_KEY</code> in Vercel before admin writes will work.
           </p>
         </section>
       ) : null}
 
       <section className="grid two">
         <article className="card">
-          <h2 style={{ marginTop: 0 }}>Peptides</h2>
-          <p className="muted">Use edit links to load existing content into the form.</p>
-          <div className="grid" style={{ maxHeight: 240, overflowY: "auto" }}>
+          <div className="section-head">
+            <h2>Peptides</h2>
+            <p className="muted">Pick an item to preload it in the edit form.</p>
+          </div>
+          <div className="admin-list">
             {data.peptides.map((peptide) => (
-              <div key={peptide.id} style={{ display: "flex", justifyContent: "space-between", gap: "0.6rem" }}>
+              <div className="admin-list-item" key={peptide.id}>
                 <span>
-                  {peptide.name} {peptide.isPublished ? <span className="chip">Published</span> : <span className="chip">Draft</span>}
+                  {peptide.name}{" "}
+                  <span className={`admin-badge ${peptide.isPublished ? "published" : "draft"}`}>
+                    {peptide.isPublished ? "Published" : "Draft"}
+                  </span>
                 </span>
-                <Link href={`/admin?editPeptide=${encodeURIComponent(peptide.slug)}`}>Edit</Link>
+                <Link className="subtle-link" href={`/admin?editPeptide=${encodeURIComponent(peptide.slug)}`}>
+                  Edit
+                </Link>
               </div>
             ))}
           </div>
         </article>
+
         <article className="card">
-          <h2 style={{ marginTop: 0 }}>Vendors</h2>
-          <p className="muted">Vendors can be draft/published separately from peptide pages.</p>
-          <div className="grid" style={{ maxHeight: 240, overflowY: "auto" }}>
+          <div className="section-head">
+            <h2>Vendors</h2>
+            <p className="muted">Vendor publish status is managed independently.</p>
+          </div>
+          <div className="admin-list">
             {data.vendors.map((vendor) => (
-              <div key={vendor.id} style={{ display: "flex", justifyContent: "space-between", gap: "0.6rem" }}>
+              <div className="admin-list-item" key={vendor.id}>
                 <span>
-                  {vendor.name} {vendor.isPublished ? <span className="chip">Published</span> : <span className="chip">Draft</span>}
+                  {vendor.name}{" "}
+                  <span className={`admin-badge ${vendor.isPublished ? "published" : "draft"}`}>
+                    {vendor.isPublished ? "Published" : "Draft"}
+                  </span>
                 </span>
-                <Link href={`/admin?editVendor=${encodeURIComponent(vendor.slug)}`}>Edit</Link>
+                <Link className="subtle-link" href={`/admin?editVendor=${encodeURIComponent(vendor.slug)}`}>
+                  Edit
+                </Link>
               </div>
             ))}
           </div>
@@ -101,84 +118,48 @@ export default async function AdminPage({ searchParams }: PageProps) {
       </section>
 
       <section className="card">
-        <h2 style={{ marginTop: 0 }}>Create Or Edit Peptide</h2>
-        <form action={upsertPeptideAction} className="grid two">
+        <div className="section-head">
+          <h2>Create Or Edit Peptide</h2>
+        </div>
+        <form action={upsertPeptideAction} className="form-grid two-col">
           <label>
             Slug
-            <input
-              name="slug"
-              defaultValue={selectedPeptide?.slug ?? ""}
-              placeholder="semaglutide"
-              style={{ width: "100%", marginTop: "0.35rem" }}
-            />
+            <input name="slug" defaultValue={selectedPeptide?.slug ?? ""} placeholder="semaglutide" />
           </label>
           <label>
             Canonical name
-            <input
-              name="canonicalName"
-              defaultValue={selectedPeptide?.canonicalName ?? ""}
-              placeholder="Semaglutide"
-              style={{ width: "100%", marginTop: "0.35rem" }}
-            />
+            <input name="canonicalName" defaultValue={selectedPeptide?.canonicalName ?? ""} placeholder="Semaglutide" />
           </label>
           <label>
             Sequence
-            <input
-              name="sequence"
-              defaultValue={selectedPeptide?.sequence ?? ""}
-              style={{ width: "100%", marginTop: "0.35rem" }}
-            />
+            <input name="sequence" defaultValue={selectedPeptide?.sequence ?? ""} />
           </label>
           <label>
             Peptide class
-            <input
-              name="peptideClass"
-              defaultValue={selectedPeptide?.peptideClass ?? ""}
-              style={{ width: "100%", marginTop: "0.35rem" }}
-            />
+            <input name="peptideClass" defaultValue={selectedPeptide?.peptideClass ?? ""} />
           </label>
-          <label style={{ gridColumn: "1 / -1" }}>
+          <label className="full-span">
             Intro (consumer)
-            <textarea
-              name="intro"
-              defaultValue={selectedPeptide?.intro ?? ""}
-              rows={3}
-              style={{ width: "100%", marginTop: "0.35rem" }}
-            />
+            <textarea name="intro" defaultValue={selectedPeptide?.intro ?? ""} rows={3} />
           </label>
-          <label style={{ gridColumn: "1 / -1" }}>
+          <label className="full-span">
             Mechanism (clinical)
-            <textarea
-              name="mechanism"
-              defaultValue={selectedPeptide?.mechanism ?? ""}
-              rows={3}
-              style={{ width: "100%", marginTop: "0.35rem" }}
-            />
+            <textarea name="mechanism" defaultValue={selectedPeptide?.mechanism ?? ""} rows={3} />
           </label>
-          <label style={{ gridColumn: "1 / -1" }}>
+          <label className="full-span">
             Effectiveness summary
-            <textarea
-              name="effectivenessSummary"
-              defaultValue={selectedPeptide?.effectivenessSummary ?? ""}
-              rows={3}
-              style={{ width: "100%", marginTop: "0.35rem" }}
-            />
+            <textarea name="effectivenessSummary" defaultValue={selectedPeptide?.effectivenessSummary ?? ""} rows={3} />
           </label>
-          <label style={{ gridColumn: "1 / -1" }}>
+          <label className="full-span">
             Long description
-            <textarea
-              name="longDescription"
-              defaultValue={selectedPeptide?.longDescription ?? ""}
-              rows={4}
-              style={{ width: "100%", marginTop: "0.35rem" }}
-            />
+            <textarea name="longDescription" defaultValue={selectedPeptide?.longDescription ?? ""} rows={4} />
           </label>
-          <label style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+          <label className="checkbox-row">
             <input name="isPublished" type="checkbox" defaultChecked={selectedPeptide?.isPublished ?? false} />
             Published on public site
           </label>
           <div>
-            <button className="btn" type="submit">
+            <button className="btn primary" type="submit">
               Save Peptide
             </button>
           </div>
@@ -187,11 +168,13 @@ export default async function AdminPage({ searchParams }: PageProps) {
 
       <section className="grid two">
         <article className="card">
-          <h2 style={{ marginTop: 0 }}>Use Case Entry</h2>
-          <form action={addUseCaseAction} className="grid">
+          <div className="section-head">
+            <h2>Use Case Entry</h2>
+          </div>
+          <form action={addUseCaseAction} className="form-grid">
             <label>
               Peptide
-              <select name="peptideId" style={{ width: "100%", marginTop: "0.35rem" }}>
+              <select name="peptideId">
                 <option value="">Select peptide</option>
                 {data.peptides.map((peptide) => (
                   <option key={peptide.id} value={peptide.id}>
@@ -202,31 +185,25 @@ export default async function AdminPage({ searchParams }: PageProps) {
             </label>
             <label>
               Use case name
-              <input name="useCaseName" placeholder="Weight Management" style={{ width: "100%", marginTop: "0.35rem" }} />
+              <input name="useCaseName" placeholder="Weight Management" />
             </label>
             <label>
               Use case slug (optional)
-              <input name="useCaseSlug" placeholder="weight-management" style={{ width: "100%", marginTop: "0.35rem" }} />
+              <input name="useCaseSlug" placeholder="weight-management" />
             </label>
             <label>
               Jurisdiction
-              <select name="jurisdiction" style={{ width: "100%", marginTop: "0.35rem" }}>
-                {data.jurisdictions.length > 0
-                  ? data.jurisdictions.map((jurisdiction) => (
-                      <option key={jurisdiction.code} value={jurisdiction.code}>
-                        {jurisdiction.code} - {jurisdiction.name}
-                      </option>
-                    ))
-                  : JURISDICTIONS.map((code) => (
-                      <option key={code} value={code}>
-                        {code}
-                      </option>
-                    ))}
+              <select name="jurisdiction">
+                {jurisdictions.map((jurisdiction) => (
+                  <option key={jurisdiction.code} value={jurisdiction.code}>
+                    {jurisdiction.code} - {jurisdiction.name}
+                  </option>
+                ))}
               </select>
             </label>
             <label>
               Evidence grade
-              <select name="evidenceGrade" style={{ width: "100%", marginTop: "0.35rem" }}>
+              <select name="evidenceGrade">
                 {EVIDENCE_GRADES.map((grade) => (
                   <option key={grade} value={grade}>
                     {grade}
@@ -236,24 +213,26 @@ export default async function AdminPage({ searchParams }: PageProps) {
             </label>
             <label>
               Consumer summary
-              <textarea name="consumerSummary" rows={3} style={{ width: "100%", marginTop: "0.35rem" }} />
+              <textarea name="consumerSummary" rows={3} />
             </label>
             <label>
               Clinical summary
-              <textarea name="clinicalSummary" rows={3} style={{ width: "100%", marginTop: "0.35rem" }} />
+              <textarea name="clinicalSummary" rows={3} />
             </label>
-            <button className="btn" type="submit">
+            <button className="btn primary" type="submit">
               Save Use Case
             </button>
           </form>
         </article>
 
         <article className="card">
-          <h2 style={{ marginTop: 0 }}>Dosing Entry</h2>
-          <form action={addDosingAction} className="grid">
+          <div className="section-head">
+            <h2>Dosing Entry</h2>
+          </div>
+          <form action={addDosingAction} className="form-grid">
             <label>
               Peptide
-              <select name="peptideId" style={{ width: "100%", marginTop: "0.35rem" }}>
+              <select name="peptideId">
                 <option value="">Select peptide</option>
                 {data.peptides.map((peptide) => (
                   <option key={peptide.id} value={peptide.id}>
@@ -264,23 +243,17 @@ export default async function AdminPage({ searchParams }: PageProps) {
             </label>
             <label>
               Jurisdiction
-              <select name="jurisdiction" style={{ width: "100%", marginTop: "0.35rem" }}>
-                {data.jurisdictions.length > 0
-                  ? data.jurisdictions.map((jurisdiction) => (
-                      <option key={jurisdiction.code} value={jurisdiction.code}>
-                        {jurisdiction.code} - {jurisdiction.name}
-                      </option>
-                    ))
-                  : JURISDICTIONS.map((code) => (
-                      <option key={code} value={code}>
-                        {code}
-                      </option>
-                    ))}
+              <select name="jurisdiction">
+                {jurisdictions.map((jurisdiction) => (
+                  <option key={jurisdiction.code} value={jurisdiction.code}>
+                    {jurisdiction.code} - {jurisdiction.name}
+                  </option>
+                ))}
               </select>
             </label>
             <label>
               Context
-              <select name="context" style={{ width: "100%", marginTop: "0.35rem" }}>
+              <select name="context">
                 <option value="APPROVED_LABEL">APPROVED_LABEL</option>
                 <option value="STUDY_REPORTED">STUDY_REPORTED</option>
                 <option value="EXPERT_CONSENSUS">EXPERT_CONSENSUS</option>
@@ -288,29 +261,29 @@ export default async function AdminPage({ searchParams }: PageProps) {
             </label>
             <label>
               Population
-              <input name="population" style={{ width: "100%", marginTop: "0.35rem" }} />
+              <input name="population" />
             </label>
             <label>
               Route
-              <input name="route" style={{ width: "100%", marginTop: "0.35rem" }} />
+              <input name="route" />
             </label>
             <label>
               Starting dose
-              <input name="startingDose" style={{ width: "100%", marginTop: "0.35rem" }} />
+              <input name="startingDose" />
             </label>
             <label>
               Maintenance dose
-              <input name="maintenanceDose" style={{ width: "100%", marginTop: "0.35rem" }} />
+              <input name="maintenanceDose" />
             </label>
             <label>
               Frequency
-              <input name="frequency" style={{ width: "100%", marginTop: "0.35rem" }} />
+              <input name="frequency" />
             </label>
             <label>
               Notes
-              <textarea name="notes" rows={3} style={{ width: "100%", marginTop: "0.35rem" }} />
+              <textarea name="notes" rows={3} />
             </label>
-            <button className="btn" type="submit">
+            <button className="btn primary" type="submit">
               Add Dosing Entry
             </button>
           </form>
@@ -318,11 +291,13 @@ export default async function AdminPage({ searchParams }: PageProps) {
       </section>
 
       <section className="card">
-        <h2 style={{ marginTop: 0 }}>Safety Entry</h2>
-        <form action={upsertSafetyAction} className="grid two">
+        <div className="section-head">
+          <h2>Safety Entry</h2>
+        </div>
+        <form action={upsertSafetyAction} className="form-grid two-col">
           <label>
             Peptide
-            <select name="peptideId" style={{ width: "100%", marginTop: "0.35rem" }}>
+            <select name="peptideId">
               <option value="">Select peptide</option>
               {data.peptides.map((peptide) => (
                 <option key={peptide.id} value={peptide.id}>
@@ -333,38 +308,32 @@ export default async function AdminPage({ searchParams }: PageProps) {
           </label>
           <label>
             Jurisdiction
-            <select name="jurisdiction" style={{ width: "100%", marginTop: "0.35rem" }}>
-              {data.jurisdictions.length > 0
-                ? data.jurisdictions.map((jurisdiction) => (
-                    <option key={jurisdiction.code} value={jurisdiction.code}>
-                      {jurisdiction.code} - {jurisdiction.name}
-                    </option>
-                  ))
-                : JURISDICTIONS.map((code) => (
-                    <option key={code} value={code}>
-                      {code}
-                    </option>
-                  ))}
+            <select name="jurisdiction">
+              {jurisdictions.map((jurisdiction) => (
+                <option key={jurisdiction.code} value={jurisdiction.code}>
+                  {jurisdiction.code} - {jurisdiction.name}
+                </option>
+              ))}
             </select>
           </label>
-          <label style={{ gridColumn: "1 / -1" }}>
+          <label className="full-span">
             Adverse effects
-            <textarea name="adverseEffects" rows={3} style={{ width: "100%", marginTop: "0.35rem" }} />
+            <textarea name="adverseEffects" rows={3} />
           </label>
-          <label style={{ gridColumn: "1 / -1" }}>
+          <label className="full-span">
             Contraindications
-            <textarea name="contraindications" rows={3} style={{ width: "100%", marginTop: "0.35rem" }} />
+            <textarea name="contraindications" rows={3} />
           </label>
-          <label style={{ gridColumn: "1 / -1" }}>
+          <label className="full-span">
             Interactions
-            <textarea name="interactions" rows={3} style={{ width: "100%", marginTop: "0.35rem" }} />
+            <textarea name="interactions" rows={3} />
           </label>
-          <label style={{ gridColumn: "1 / -1" }}>
+          <label className="full-span">
             Monitoring
-            <textarea name="monitoring" rows={3} style={{ width: "100%", marginTop: "0.35rem" }} />
+            <textarea name="monitoring" rows={3} />
           </label>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <button className="btn" type="submit">
+          <div className="full-span">
+            <button className="btn primary" type="submit">
               Save Safety Entry
             </button>
           </div>
@@ -372,41 +341,32 @@ export default async function AdminPage({ searchParams }: PageProps) {
       </section>
 
       <section className="card">
-        <h2 style={{ marginTop: 0 }}>Create Or Edit Vendor</h2>
-        <form action={upsertVendorAction} className="grid two">
+        <div className="section-head">
+          <h2>Create Or Edit Vendor</h2>
+        </div>
+        <form action={upsertVendorAction} className="form-grid two-col">
           <label>
             Slug
-            <input
-              name="slug"
-              defaultValue={selectedVendor?.slug ?? ""}
-              placeholder="nova-peptide-labs"
-              style={{ width: "100%", marginTop: "0.35rem" }}
-            />
+            <input name="slug" defaultValue={selectedVendor?.slug ?? ""} placeholder="nova-peptide-labs" />
           </label>
           <label>
             Name
-            <input
-              name="name"
-              defaultValue={selectedVendor?.name ?? ""}
-              placeholder="Nova Peptide Labs"
-              style={{ width: "100%", marginTop: "0.35rem" }}
-            />
+            <input name="name" defaultValue={selectedVendor?.name ?? ""} placeholder="Nova Peptide Labs" />
           </label>
-          <label style={{ gridColumn: "1 / -1" }}>
+          <label className="full-span">
             Website URL
             <input
               name="websiteUrl"
               defaultValue={selectedVendor?.websiteUrl ?? ""}
               placeholder="https://vendor-site.com"
-              style={{ width: "100%", marginTop: "0.35rem" }}
             />
           </label>
-          <label style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+          <label className="checkbox-row">
             <input name="isPublished" type="checkbox" defaultChecked={selectedVendor?.isPublished ?? false} />
             Published on public site
           </label>
           <div>
-            <button className="btn" type="submit">
+            <button className="btn primary" type="submit">
               Save Vendor
             </button>
           </div>
@@ -415,11 +375,13 @@ export default async function AdminPage({ searchParams }: PageProps) {
 
       <section className="grid two">
         <article className="card">
-          <h2 style={{ marginTop: 0 }}>Vendor Peptide Listing</h2>
-          <form action={upsertVendorListingAction} className="grid">
+          <div className="section-head">
+            <h2>Vendor Peptide Listing</h2>
+          </div>
+          <form action={upsertVendorListingAction} className="form-grid">
             <label>
               Vendor
-              <select name="vendorId" style={{ width: "100%", marginTop: "0.35rem" }}>
+              <select name="vendorId">
                 <option value="">Select vendor</option>
                 {data.vendors.map((vendor) => (
                   <option key={vendor.id} value={vendor.id}>
@@ -430,7 +392,7 @@ export default async function AdminPage({ searchParams }: PageProps) {
             </label>
             <label>
               Peptide
-              <select name="peptideId" style={{ width: "100%", marginTop: "0.35rem" }}>
+              <select name="peptideId">
                 <option value="">Select peptide</option>
                 {data.peptides.map((peptide) => (
                   <option key={peptide.id} value={peptide.id}>
@@ -439,30 +401,32 @@ export default async function AdminPage({ searchParams }: PageProps) {
                 ))}
               </select>
             </label>
-            <label style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+            <label className="checkbox-row">
               <input name="isAffiliate" type="checkbox" />
               Affiliate listing
             </label>
             <label>
               Affiliate URL
-              <input name="affiliateUrl" style={{ width: "100%", marginTop: "0.35rem" }} />
+              <input name="affiliateUrl" />
             </label>
             <label>
               Product URL
-              <input name="productUrl" style={{ width: "100%", marginTop: "0.35rem" }} />
+              <input name="productUrl" />
             </label>
-            <button className="btn" type="submit">
+            <button className="btn primary" type="submit">
               Save Listing
             </button>
           </form>
         </article>
 
         <article className="card">
-          <h2 style={{ marginTop: 0 }}>Vendor Rating Snapshot</h2>
-          <form action={upsertVendorRatingAction} className="grid">
+          <div className="section-head">
+            <h2>Vendor Rating Snapshot</h2>
+          </div>
+          <form action={upsertVendorRatingAction} className="form-grid">
             <label>
               Vendor
-              <select name="vendorId" style={{ width: "100%", marginTop: "0.35rem" }}>
+              <select name="vendorId">
                 <option value="">Select vendor</option>
                 {data.vendors.map((vendor) => (
                   <option key={vendor.id} value={vendor.id}>
@@ -473,25 +437,21 @@ export default async function AdminPage({ searchParams }: PageProps) {
             </label>
             <label>
               Rating (0-5, blank for no rating)
-              <input name="rating" placeholder="4.3" style={{ width: "100%", marginTop: "0.35rem" }} />
+              <input name="rating" placeholder="4.3" />
             </label>
             <label>
               Confidence (0-1)
-              <input name="confidence" placeholder="0.82" style={{ width: "100%", marginTop: "0.35rem" }} />
+              <input name="confidence" placeholder="0.82" />
             </label>
             <label>
               Reason tags (comma-separated)
-              <input
-                name="reasonTags"
-                placeholder="third_party_lab_docs,cold_chain_policy"
-                style={{ width: "100%", marginTop: "0.35rem" }}
-              />
+              <input name="reasonTags" placeholder="third_party_lab_docs,cold_chain_policy" />
             </label>
             <label>
               Method version
-              <input name="methodVersion" defaultValue="manual_admin_v1" style={{ width: "100%", marginTop: "0.35rem" }} />
+              <input name="methodVersion" defaultValue="manual_admin_v1" />
             </label>
-            <button className="btn" type="submit">
+            <button className="btn primary" type="submit">
               Save Rating Snapshot
             </button>
           </form>
@@ -499,10 +459,10 @@ export default async function AdminPage({ searchParams }: PageProps) {
       </section>
 
       <section className="card">
-        <h2 style={{ marginTop: 0 }}>Status Labels</h2>
-        <p className="muted" style={{ marginTop: 0 }}>
-          Regulatory status values accepted by the database:
-        </p>
+        <div className="section-head">
+          <h2>Status Labels</h2>
+          <p className="muted">Regulatory status values accepted by the database.</p>
+        </div>
         <div>
           {REGULATORY_STATUSES.map((status) => (
             <span key={status} className="chip">

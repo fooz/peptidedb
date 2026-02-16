@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "next typegen && mkdir -p .next/types && touch .next/types/cache-life.d.ts && rm -f tsconfig.tsbuildinfo && tsc --noEmit --incremental false"
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json --incremental false"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
