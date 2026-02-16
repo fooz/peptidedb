@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { assertAdminAuth } from "@/lib/admin-auth";
+import { ingestClinicalTrialsCatalog } from "@/lib/clinicaltrials-catalog-ingest";
 import { ingestExpandedPeptideDataset } from "@/lib/expanded-dataset-ingest";
 import { refreshLiveEvidenceClaims } from "@/lib/live-evidence-refresh";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
@@ -419,6 +420,21 @@ export async function refreshLiveEvidenceAction() {
   } catch (error) {
     rethrowIfRedirectError(error);
     const message = error instanceof Error ? error.message : "Failed to refresh live evidence.";
+    redirectNotice(message, "error");
+  }
+}
+
+export async function ingestClinicalTrialsCatalogAction() {
+  await assertAdminAuth();
+  try {
+    const supabase = requireSupabaseAdmin();
+    const result = await ingestClinicalTrialsCatalog(supabase, { target: 320, maxPages: 8 });
+    redirectNotice(
+      `ClinicalTrials catalog ingest complete: ${result.inserted} new peptides inserted, ${result.skippedExisting} already existed, ${result.candidatesFound} candidates found from ${result.scannedStudies} studies.`
+    );
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    const message = error instanceof Error ? error.message : "Failed to ingest ClinicalTrials peptide catalog.";
     redirectNotice(message, "error");
   }
 }

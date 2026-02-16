@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 type IngestControlsProps = {
   ingestExpandedDatasetAction: () => Promise<void>;
   refreshLiveEvidenceAction: () => Promise<void>;
+  ingestClinicalTrialsCatalogAction: () => Promise<void>;
 };
 
 type IngestCardProps = {
@@ -62,7 +63,11 @@ function IngestCard({ action, title, description, idleLabel, pendingLabel, prima
   );
 }
 
-export function IngestControls({ ingestExpandedDatasetAction, refreshLiveEvidenceAction }: IngestControlsProps) {
+export function IngestControls({
+  ingestExpandedDatasetAction,
+  refreshLiveEvidenceAction,
+  ingestClinicalTrialsCatalogAction
+}: IngestControlsProps) {
   return (
     <div className="ingest-controls">
       <IngestCard
@@ -79,6 +84,13 @@ export function IngestControls({ ingestExpandedDatasetAction, refreshLiveEvidenc
         description="Pulls latest PubMed and ClinicalTrials evidence into citation claims for published peptides."
         idleLabel="Refresh Live Sources"
         pendingLabel="Refreshing Live Sources..."
+      />
+      <IngestCard
+        action={ingestClinicalTrialsCatalogAction}
+        title="ClinicalTrials Catalog (Hundreds)"
+        description="Imports a large investigational peptide catalog from ClinicalTrials intervention records."
+        idleLabel="Import Hundreds From ClinicalTrials"
+        pendingLabel="Importing Hundreds..."
       />
     </div>
   );

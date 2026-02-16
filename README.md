@@ -60,6 +60,7 @@ Consumer-first peptide reference database with embedded clinical sections, evide
 - Citation claim workflow in admin (requires source URL + publication date)
 - One-click expanded dataset ingest button in `/admin`
 - One-click live evidence refresh button in `/admin` (PubMed + ClinicalTrials)
+- One-click high-volume ClinicalTrials catalog ingest in `/admin` (targets hundreds of peptide entries)
 - Evidence and references section on peptide detail pages
 - Supabase-backed reads with fallback data if tables are empty
 - Health endpoint: `/api/health`
