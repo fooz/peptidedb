@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { assertAdminAuth } from "@/lib/admin-auth";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 
@@ -29,6 +30,12 @@ function requireSupabaseAdmin() {
     throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.");
   }
   return supabase;
+}
+
+function rethrowIfRedirectError(error: unknown) {
+  if (isRedirectError(error)) {
+    throw error;
+  }
 }
 
 async function getJurisdictionId(code: string): Promise<number> {
@@ -117,6 +124,7 @@ export async function upsertPeptideAction(formData: FormData) {
 
     redirect(`/admin?kind=success&notice=${encodeURIComponent("Peptide saved.")}&editPeptide=${encodeURIComponent(slug)}`);
   } catch (error) {
+    rethrowIfRedirectError(error);
     const message = error instanceof Error ? error.message : "Failed to save peptide.";
     redirectNotice(message, "error");
   }
@@ -177,6 +185,7 @@ export async function addUseCaseAction(formData: FormData) {
 
     redirectNotice("Use case entry saved.");
   } catch (error) {
+    rethrowIfRedirectError(error);
     const message = error instanceof Error ? error.message : "Failed to save use case.";
     redirectNotice(message, "error");
   }
@@ -215,6 +224,7 @@ export async function addDosingAction(formData: FormData) {
 
     redirectNotice("Dosing entry added.");
   } catch (error) {
+    rethrowIfRedirectError(error);
     const message = error instanceof Error ? error.message : "Failed to add dosing entry.";
     redirectNotice(message, "error");
   }
@@ -261,6 +271,7 @@ export async function upsertSafetyAction(formData: FormData) {
 
     redirectNotice("Safety entry saved.");
   } catch (error) {
+    rethrowIfRedirectError(error);
     const message = error instanceof Error ? error.message : "Failed to save safety entry.";
     redirectNotice(message, "error");
   }
@@ -321,6 +332,7 @@ export async function addCitationClaimAction(formData: FormData) {
 
     redirectNotice("Citation claim saved.");
   } catch (error) {
+    rethrowIfRedirectError(error);
     const message = error instanceof Error ? error.message : "Failed to save citation claim.";
     redirectNotice(message, "error");
   }
@@ -356,6 +368,7 @@ export async function upsertVendorAction(formData: FormData) {
 
     redirect(`/admin?kind=success&notice=${encodeURIComponent("Vendor saved.")}&editVendor=${encodeURIComponent(slug)}`);
   } catch (error) {
+    rethrowIfRedirectError(error);
     const message = error instanceof Error ? error.message : "Failed to save vendor.";
     redirectNotice(message, "error");
   }
@@ -404,6 +417,7 @@ export async function upsertVendorListingAction(formData: FormData) {
 
     redirectNotice("Vendor listing saved.");
   } catch (error) {
+    rethrowIfRedirectError(error);
     const message = error instanceof Error ? error.message : "Failed to save vendor listing.";
     redirectNotice(message, "error");
   }
@@ -463,6 +477,7 @@ export async function upsertVendorRatingAction(formData: FormData) {
 
     redirectNotice("Vendor rating snapshot saved.");
   } catch (error) {
+    rethrowIfRedirectError(error);
     const message = error instanceof Error ? error.message : "Failed to save vendor rating.";
     redirectNotice(message, "error");
   }
