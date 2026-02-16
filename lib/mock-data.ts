@@ -79,7 +79,18 @@ export const peptideData: PeptideDetail[] = [
         notes: "Research context only; not treatment guidance."
       }
     ],
-    vendors
+    vendors,
+    evidenceClaims: [
+      {
+        section: "Effectiveness",
+        claimText: "Large randomized trials support efficacy in approved populations.",
+        evidenceGrade: "A",
+        sourceUrl: "https://clinicaltrials.gov/",
+        sourceTitle: "ClinicalTrials evidence summary",
+        publishedAt: "2024-01-15",
+        retrievedAt: "2026-02-16T00:00:00Z"
+      }
+    ]
   },
   {
     slug: "bpc-157",
@@ -123,7 +134,18 @@ export const peptideData: PeptideDetail[] = [
         notes: "Research context only; not treatment guidance."
       }
     ],
-    vendors
+    vendors,
+    evidenceClaims: [
+      {
+        section: "Safety",
+        claimText: "Human safety evidence remains limited and not yet definitive.",
+        evidenceGrade: "C",
+        sourceUrl: "https://pubmed.ncbi.nlm.nih.gov/",
+        sourceTitle: "PubMed indexed review summary",
+        publishedAt: "2023-11-10",
+        retrievedAt: "2026-02-16T00:00:00Z"
+      }
+    ]
   }
 ];
 

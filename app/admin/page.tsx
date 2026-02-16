@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { logoutAdminAction } from "@/app/admin/auth-actions";
 import {
+  addCitationClaimAction,
   addDosingAction,
   addUseCaseAction,
   upsertPeptideAction,
@@ -35,6 +36,7 @@ export default async function AdminPage({ searchParams }: PageProps) {
   const data = await getAdminDashboardData(editPeptide, editVendor);
 
   const selectedPeptide = data.selectedPeptide;
+  const selectedPeptideClaims = data.selectedPeptideClaims;
   const selectedVendor = data.selectedVendor;
   const jurisdictions =
     data.jurisdictions.length > 0
@@ -338,6 +340,106 @@ export default async function AdminPage({ searchParams }: PageProps) {
             </button>
           </div>
         </form>
+      </section>
+
+      <section className="card">
+        <div className="section-head">
+          <h2>Citation Claim Entry</h2>
+          <p className="muted">Every claim should include a source URL and publication date.</p>
+        </div>
+        <form action={addCitationClaimAction} className="form-grid two-col">
+          <input type="hidden" name="editPeptideSlug" value={selectedPeptide?.slug ?? ""} />
+          <label>
+            Peptide
+            <select name="peptideId" defaultValue={selectedPeptide?.id ? String(selectedPeptide.id) : ""} required>
+              <option value="">Select peptide</option>
+              {data.peptides.map((peptide) => (
+                <option key={peptide.id} value={peptide.id}>
+                  {peptide.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Section
+            <input name="section" placeholder="Effectiveness" required />
+          </label>
+          <label>
+            Evidence grade
+            <select name="evidenceGrade" defaultValue="">
+              <option value="">Not graded</option>
+              {EVIDENCE_GRADES.map((grade) => (
+                <option key={grade} value={grade}>
+                  {grade}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Source published date
+            <input name="sourcePublishedAt" type="date" required />
+          </label>
+          <label className="full-span">
+            Claim text
+            <textarea name="claimText" rows={3} required />
+          </label>
+          <label className="full-span">
+            Source URL
+            <input name="sourceUrl" type="url" placeholder="https://..." required />
+          </label>
+          <label className="full-span">
+            Source title (optional)
+            <input name="sourceTitle" placeholder="Trial report or publication title" />
+          </label>
+          <div className="full-span">
+            <button className="btn primary" type="submit">
+              Save Citation Claim
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section className="card">
+        <div className="section-head">
+          <h2>Selected Peptide Citations</h2>
+          <p className="muted">
+            {selectedPeptide
+              ? `Showing saved claims for ${selectedPeptide.canonicalName}.`
+              : "Choose a peptide from the left panel to preview claim citations."}
+          </p>
+        </div>
+        {!selectedPeptide ? (
+          <p className="empty-state">No peptide selected.</p>
+        ) : selectedPeptideClaims.length === 0 ? (
+          <p className="empty-state">No citation claims saved for this peptide yet.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Section</th>
+                <th>Claim</th>
+                <th>Grade</th>
+                <th>Source</th>
+                <th>Published</th>
+              </tr>
+            </thead>
+            <tbody>
+              {selectedPeptideClaims.map((claim) => (
+                <tr key={claim.id}>
+                  <td>{claim.section}</td>
+                  <td>{claim.claimText}</td>
+                  <td>{claim.evidenceGrade ?? "N/A"}</td>
+                  <td>
+                    <a href={claim.sourceUrl} target="_blank" rel="noreferrer">
+                      {claim.sourceTitle || "Open source"}
+                    </a>
+                  </td>
+                  <td>{claim.publishedAt}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </section>
 
       <section className="card">

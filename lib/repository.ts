@@ -2,6 +2,7 @@ import { getAllPeptides, getAllVendors, getPeptideBySlug } from "@/lib/mock-data
 import { getSupabaseClient } from "@/lib/supabase";
 import type {
   DosingEntry,
+  EvidenceClaim,
   EvidenceGrade,
   JurisdictionCode,
   PeptideDetail,
@@ -235,6 +236,35 @@ function formatSafetySummary(rows: unknown[]): string {
 
 type VendorRatingMap = Map<number, { rating: number | null; confidence: number | null; reasonTags: string[] }>;
 
+function mapEvidenceClaims(rows: unknown[]): EvidenceClaim[] {
+  return rows
+    .map((row) => {
+      const record = asRecord(row);
+      if (!record) {
+        return null;
+      }
+      const citation = Array.isArray(record.citations) ? asRecord(record.citations[0]) : asRecord(record.citations);
+      const section = asString(record.section);
+      const claimText = asString(record.claim_text);
+      const sourceUrl = asString(citation?.source_url);
+      const publishedAt = asString(citation?.published_at);
+      if (!section || !claimText || !sourceUrl || !publishedAt) {
+        return null;
+      }
+
+      return {
+        section,
+        claimText,
+        evidenceGrade: asString(record.evidence_grade) ? ensureEvidenceGrade(record.evidence_grade) : null,
+        sourceUrl,
+        sourceTitle: asString(citation?.source_title),
+        publishedAt,
+        retrievedAt: asString(citation?.retrieved_at)
+      } satisfies EvidenceClaim;
+    })
+    .filter((claim): claim is EvidenceClaim => claim !== null);
+}
+
 async function getRatingMap(vendorIds: number[]): Promise<VendorRatingMap> {
   const map: VendorRatingMap = new Map();
   if (vendorIds.length === 0) {
@@ -346,6 +376,12 @@ export async function getPeptideDetail(slug: string): Promise<PeptideDetail | nu
   const useCaseData = collectUseCaseData(asArray(row.peptide_use_cases));
   const dosing = mapDosing(asArray(row.peptide_dosing_entries));
   const safety = formatSafetySummary(asArray(row.peptide_safety_entries));
+  const { data: claimRows } = await supabase
+    .from("peptide_claims")
+    .select("section,claim_text,evidence_grade,citations(source_url,source_title,published_at,retrieved_at)")
+    .eq("peptide_id", peptideId)
+    .order("id", { ascending: false });
+  const evidenceClaims = mapEvidenceClaims(asArray(claimRows));
 
   const { data: listingRows } = await supabase
     .from("vendor_peptide_listings")
@@ -427,6 +463,7 @@ export async function getPeptideDetail(slug: string): Promise<PeptideDetail | nu
     longDescription,
     dosing,
     vendors,
+    evidenceClaims,
     featureTable: {
       "Peptide class": summary.className,
       "Typical route": summary.routes.join(", ") || "Not specified",

@@ -266,6 +266,66 @@ export async function upsertSafetyAction(formData: FormData) {
   }
 }
 
+export async function addCitationClaimAction(formData: FormData) {
+  await assertAdminAuth();
+  try {
+    const supabase = requireSupabaseAdmin();
+    const peptideId = Number(clean(formData.get("peptideId")));
+    const section = clean(formData.get("section"));
+    const claimText = clean(formData.get("claimText"));
+    const evidenceGrade = clean(formData.get("evidenceGrade"));
+    const sourceUrl = clean(formData.get("sourceUrl"));
+    const sourceTitle = clean(formData.get("sourceTitle"));
+    const sourcePublishedAt = clean(formData.get("sourcePublishedAt"));
+    const editPeptideSlug = clean(formData.get("editPeptideSlug"));
+
+    if (!peptideId || !section || !claimText || !sourceUrl || !sourcePublishedAt) {
+      redirectNotice(
+        "Citation claim requires peptide, section, claim text, source URL, and source published date.",
+        "error"
+      );
+    }
+
+    const { data: citation, error: citationError } = await supabase
+      .from("citations")
+      .insert({
+        source_url: sourceUrl,
+        source_title: sourceTitle || null,
+        published_at: sourcePublishedAt
+      })
+      .select("id")
+      .single();
+
+    if (citationError || !citation?.id) {
+      throw new Error(citationError?.message ?? "Failed to create citation.");
+    }
+
+    const normalizedGrade = evidenceGrade || null;
+    const { error: claimError } = await supabase.from("peptide_claims").insert({
+      peptide_id: peptideId,
+      section,
+      claim_text: claimText,
+      evidence_grade: normalizedGrade,
+      citation_id: citation.id
+    });
+
+    if (claimError) {
+      throw new Error(claimError.message);
+    }
+
+    if (editPeptideSlug) {
+      redirect(
+        `/admin?kind=success&notice=${encodeURIComponent("Citation claim saved.")}&editPeptide=${encodeURIComponent(editPeptideSlug)}`
+      );
+    }
+
+    redirectNotice("Citation claim saved.");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to save citation claim.";
+    redirectNotice(message, "error");
+  }
+}
+
 export async function upsertVendorAction(formData: FormData) {
   await assertAdminAuth();
   try {

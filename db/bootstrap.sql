@@ -12,6 +12,24 @@ CREATE TABLE IF NOT EXISTS peptide_profiles (
   long_description TEXT
 );
 
+CREATE TABLE IF NOT EXISTS citations (
+  id BIGSERIAL PRIMARY KEY,
+  source_url TEXT NOT NULL,
+  source_title TEXT,
+  published_at DATE NOT NULL,
+  retrieved_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS peptide_claims (
+  id BIGSERIAL PRIMARY KEY,
+  peptide_id BIGINT NOT NULL REFERENCES peptides(id) ON DELETE CASCADE,
+  section TEXT NOT NULL,
+  claim_text TEXT NOT NULL,
+  evidence_grade evidence_grade,
+  citation_id BIGINT NOT NULL REFERENCES citations(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 ALTER TABLE peptides ADD COLUMN IF NOT EXISTS is_published BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE vendors ADD COLUMN IF NOT EXISTS is_published BOOLEAN NOT NULL DEFAULT FALSE;
 
@@ -224,6 +242,51 @@ WHERE NOT EXISTS (
     AND x.jurisdiction_id = j.id
 );
 
+WITH seed_citations AS (
+  INSERT INTO citations (source_url, source_title, published_at)
+  VALUES
+    ('https://clinicaltrials.gov/', 'ClinicalTrials evidence summary', DATE '2024-01-15'),
+    ('https://pubmed.ncbi.nlm.nih.gov/', 'PubMed indexed review summary', DATE '2023-11-10')
+  RETURNING id, source_url
+),
+resolved_citations AS (
+  SELECT id, source_url FROM seed_citations
+  UNION ALL
+  SELECT c.id, c.source_url
+  FROM citations c
+  WHERE c.source_url IN ('https://clinicaltrials.gov/', 'https://pubmed.ncbi.nlm.nih.gov/')
+),
+claim_rows AS (
+  SELECT
+    p.id AS peptide_id,
+    v.section,
+    v.claim_text,
+    v.evidence_grade,
+    rc.id AS citation_id
+  FROM (
+    VALUES
+      ('semaglutide', 'Effectiveness', 'Large randomized trials support efficacy in approved populations.', 'A', 'https://clinicaltrials.gov/'),
+      ('bpc-157', 'Safety', 'Human safety evidence remains limited and not yet definitive.', 'C', 'https://pubmed.ncbi.nlm.nih.gov/')
+  ) AS v(peptide_slug, section, claim_text, evidence_grade, source_url)
+  JOIN peptides p ON p.slug = v.peptide_slug
+  JOIN resolved_citations rc ON rc.source_url = v.source_url
+)
+INSERT INTO peptide_claims (peptide_id, section, claim_text, evidence_grade, citation_id)
+SELECT
+  c.peptide_id,
+  c.section,
+  c.claim_text,
+  c.evidence_grade::evidence_grade,
+  c.citation_id
+FROM claim_rows c
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM peptide_claims pc
+  WHERE pc.peptide_id = c.peptide_id
+    AND pc.section = c.section
+    AND pc.claim_text = c.claim_text
+);
+
 INSERT INTO vendors (slug, name, website_url, is_published)
 VALUES
   ('nova-peptide-labs', 'Nova Peptide Labs', 'https://example.com/nova', TRUE),
@@ -291,6 +354,8 @@ ALTER TABLE use_cases ENABLE ROW LEVEL SECURITY;
 ALTER TABLE peptide_use_cases ENABLE ROW LEVEL SECURITY;
 ALTER TABLE peptide_dosing_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE peptide_safety_entries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE citations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE peptide_claims ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vendors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vendor_verifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vendor_lab_evidence ENABLE ROW LEVEL SECURITY;
@@ -306,6 +371,8 @@ DROP POLICY IF EXISTS public_read_use_cases ON use_cases;
 DROP POLICY IF EXISTS public_read_peptide_use_cases ON peptide_use_cases;
 DROP POLICY IF EXISTS public_read_peptide_dosing_entries ON peptide_dosing_entries;
 DROP POLICY IF EXISTS public_read_peptide_safety_entries ON peptide_safety_entries;
+DROP POLICY IF EXISTS public_read_citations ON citations;
+DROP POLICY IF EXISTS public_read_peptide_claims ON peptide_claims;
 DROP POLICY IF EXISTS public_read_vendors ON vendors;
 DROP POLICY IF EXISTS public_read_vendor_verifications ON vendor_verifications;
 DROP POLICY IF EXISTS public_read_vendor_lab_evidence ON vendor_lab_evidence;
@@ -321,6 +388,8 @@ CREATE POLICY public_read_use_cases ON use_cases FOR SELECT TO anon, authenticat
 CREATE POLICY public_read_peptide_use_cases ON peptide_use_cases FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY public_read_peptide_dosing_entries ON peptide_dosing_entries FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY public_read_peptide_safety_entries ON peptide_safety_entries FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY public_read_citations ON citations FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY public_read_peptide_claims ON peptide_claims FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY public_read_vendors ON vendors FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY public_read_vendor_verifications ON vendor_verifications FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY public_read_vendor_lab_evidence ON vendor_lab_evidence FOR SELECT TO anon, authenticated USING (true);

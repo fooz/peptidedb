@@ -86,6 +86,24 @@ CREATE TABLE peptide_safety_entries (
   UNIQUE (peptide_id, jurisdiction_id)
 );
 
+CREATE TABLE citations (
+  id BIGSERIAL PRIMARY KEY,
+  source_url TEXT NOT NULL,
+  source_title TEXT,
+  published_at DATE NOT NULL,
+  retrieved_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE peptide_claims (
+  id BIGSERIAL PRIMARY KEY,
+  peptide_id BIGINT NOT NULL REFERENCES peptides(id) ON DELETE CASCADE,
+  section TEXT NOT NULL,
+  claim_text TEXT NOT NULL,
+  evidence_grade evidence_grade,
+  citation_id BIGINT NOT NULL REFERENCES citations(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE vendors (
   id BIGSERIAL PRIMARY KEY,
   slug TEXT UNIQUE NOT NULL,

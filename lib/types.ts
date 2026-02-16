@@ -40,6 +40,16 @@ export interface VendorCard {
   isAffiliate: boolean;
 }
 
+export interface EvidenceClaim {
+  section: string;
+  claimText: string;
+  evidenceGrade: EvidenceGrade | null;
+  sourceUrl: string;
+  sourceTitle: string | null;
+  publishedAt: string;
+  retrievedAt: string | null;
+}
+
 export interface PeptideDetail extends PeptideSummary {
   intro: string;
   featureTable: Record<string, string>;
@@ -49,4 +59,5 @@ export interface PeptideDetail extends PeptideSummary {
   longDescription: string;
   dosing: DosingEntry[];
   vendors: VendorCard[];
+  evidenceClaims: EvidenceClaim[];
 }

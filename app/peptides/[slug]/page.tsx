@@ -14,6 +14,14 @@ function statusLabel(value: string): string {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function formatDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+}
+
 export default async function PeptideDetailPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const resolvedSearchParams = await searchParams;
@@ -135,6 +143,40 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
       <section className="card">
         <h2>Long Description</h2>
         <p>{peptide.longDescription}</p>
+      </section>
+
+      <section className="card">
+        <h2>Evidence And References</h2>
+        {peptide.evidenceClaims.length === 0 ? (
+          <p className="empty-state">No curated citations have been added for this peptide yet.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Section</th>
+                <th>Claim</th>
+                <th>Evidence Grade</th>
+                <th>Source</th>
+                <th>Published</th>
+              </tr>
+            </thead>
+            <tbody>
+              {peptide.evidenceClaims.map((claim, index) => (
+                <tr key={`${claim.sourceUrl}-${index}`}>
+                  <td>{claim.section}</td>
+                  <td>{claim.claimText}</td>
+                  <td>{claim.evidenceGrade ?? "N/A"}</td>
+                  <td>
+                    <a href={claim.sourceUrl} target="_blank" rel="noreferrer">
+                      {claim.sourceTitle ?? "Open source"}
+                    </a>
+                  </td>
+                  <td>{formatDate(claim.publishedAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </section>
     </div>
   );

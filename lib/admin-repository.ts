@@ -20,6 +20,16 @@ export type AdminPeptideDetail = {
   longDescription: string;
 };
 
+export type AdminPeptideClaim = {
+  id: number;
+  section: string;
+  claimText: string;
+  evidenceGrade: string | null;
+  sourceUrl: string;
+  sourceTitle: string;
+  publishedAt: string;
+};
+
 export type AdminVendorDetail = {
   id: number;
   slug: string;
@@ -35,6 +45,7 @@ export type AdminDashboardData = {
   jurisdictions: Array<{ code: string; name: string }>;
   useCases: Array<{ slug: string; name: string }>;
   selectedPeptide: AdminPeptideDetail | null;
+  selectedPeptideClaims: AdminPeptideClaim[];
   selectedVendor: AdminVendorDetail | null;
 };
 
@@ -84,6 +95,7 @@ function emptyDashboardData(): AdminDashboardData {
     jurisdictions: [],
     useCases: [],
     selectedPeptide: null,
+    selectedPeptideClaims: [],
     selectedVendor: null
   };
 }
@@ -169,6 +181,32 @@ export async function getAdminDashboardData(
         }
       : null;
 
+  let selectedPeptideClaims: AdminPeptideClaim[] = [];
+  if (selectedPeptide?.id) {
+    const { data: claimsData } = await supabase
+      .from("peptide_claims")
+      .select("id,section,claim_text,evidence_grade,citations(source_url,source_title,published_at)")
+      .eq("peptide_id", selectedPeptide.id)
+      .order("id", { ascending: false });
+
+    selectedPeptideClaims = (claimsData ?? [])
+      .map((row) => asRecord(row))
+      .filter((row): row is Record<string, unknown> => row !== null)
+      .map((row) => {
+        const citation = Array.isArray(row.citations) ? asRecord(row.citations[0]) : asRecord(row.citations);
+        return {
+          id: asNumber(row.id),
+          section: asString(row.section),
+          claimText: asString(row.claim_text),
+          evidenceGrade: asString(row.evidence_grade) || null,
+          sourceUrl: asString(citation?.source_url),
+          sourceTitle: asString(citation?.source_title),
+          publishedAt: asString(citation?.published_at)
+        };
+      })
+      .filter((claim) => claim.id > 0 && claim.section && claim.claimText && claim.sourceUrl);
+  }
+
   const selectedVendorRecord = asRecord(selectedVendorResult.data);
   const selectedVendor =
     selectedVendorRecord && selectedVendorRecord.id
@@ -188,6 +226,7 @@ export async function getAdminDashboardData(
     jurisdictions,
     useCases,
     selectedPeptide,
+    selectedPeptideClaims,
     selectedVendor
   };
 }

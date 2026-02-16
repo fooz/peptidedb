@@ -55,6 +55,8 @@ Consumer-first peptide reference database with a clinical toggle, evidence track
 - Faceted filters for peptide and vendor directories
 - Draft vs published visibility (`is_published`) on peptides and vendors
 - Password-protected admin dashboard at `/admin`
+- Citation claim workflow in admin (requires source URL + publication date)
+- Evidence and references section on peptide detail pages
 - Supabase-backed reads with fallback data if tables are empty
 - Health endpoint: `/api/health`
 
