@@ -219,22 +219,56 @@ function mapDosing(rows: unknown[]): DosingEntry[] {
     .filter((entry): entry is DosingEntry => entry !== null);
 }
 
+const SAFETY_NOT_CURATED = "Not curated yet.";
+
+function normalizeSafetyField(value: string | null): string {
+  if (!value) {
+    return "";
+  }
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.toLowerCase().startsWith("auto-generated placeholder:")) {
+    return "";
+  }
+  return trimmed;
+}
+
 function mapSafetyProfile(rows: unknown[]): SafetyProfile {
-  const first = asRecord(rows[0]);
-  if (!first) {
+  const candidates = rows
+    .map((row) => asRecord(row))
+    .filter((row): row is Record<string, unknown> => row !== null)
+    .map((row) => {
+      const adverseEffects = normalizeSafetyField(asString(row.adverse_effects));
+      const contraindications = normalizeSafetyField(asString(row.contraindications));
+      const interactions = normalizeSafetyField(asString(row.interactions));
+      const monitoring = normalizeSafetyField(asString(row.monitoring));
+      const score = [adverseEffects, contraindications, interactions, monitoring].filter((field) => field.length > 0)
+        .length;
+
+      return {
+        adverseEffects,
+        contraindications,
+        interactions,
+        monitoring,
+        score
+      };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  const best = candidates[0];
+  if (!best || best.score === 0) {
     return {
-      adverseEffects: "Not curated yet.",
-      contraindications: "Not curated yet.",
-      interactions: "Not curated yet.",
-      monitoring: "Not curated yet."
+      adverseEffects: SAFETY_NOT_CURATED,
+      contraindications: SAFETY_NOT_CURATED,
+      interactions: SAFETY_NOT_CURATED,
+      monitoring: SAFETY_NOT_CURATED
     };
   }
 
   return {
-    adverseEffects: asString(first.adverse_effects) ?? "Not curated yet.",
-    contraindications: asString(first.contraindications) ?? "Not curated yet.",
-    interactions: asString(first.interactions) ?? "Not curated yet.",
-    monitoring: asString(first.monitoring) ?? "Not curated yet."
+    adverseEffects: best.adverseEffects || SAFETY_NOT_CURATED,
+    contraindications: best.contraindications || SAFETY_NOT_CURATED,
+    interactions: best.interactions || SAFETY_NOT_CURATED,
+    monitoring: best.monitoring || SAFETY_NOT_CURATED
   };
 }
 
@@ -454,7 +488,7 @@ export async function getPeptideDetail(slug: string): Promise<PeptideDetail | nu
     "Long-form monograph content is in progress for this peptide.";
 
   const commonConcerns =
-    safety.adverseEffects && safety.adverseEffects !== "Not curated yet." ? safety.adverseEffects : "Not specified";
+    safety.adverseEffects && safety.adverseEffects !== SAFETY_NOT_CURATED ? safety.adverseEffects : "Not specified";
 
   return {
     ...summary,

@@ -497,10 +497,10 @@ export async function ingestClinicalTrialsCatalog(
       return {
         peptide_id: peptideId,
         jurisdiction_id: usJurisdictionId,
-        adverse_effects: "Auto-generated placeholder: review trial safety outcomes before making practical conclusions.",
-        contraindications: "Auto-generated placeholder: contraindication profile requires source-level review.",
-        interactions: "Auto-generated placeholder: interaction profile not curated yet.",
-        monitoring: "Auto-generated placeholder: monitoring should follow protocol-specific and clinician-directed standards."
+        adverse_effects: null,
+        contraindications: null,
+        interactions: null,
+        monitoring: null
       };
     })
     .filter((row): row is NonNullable<typeof row> => row !== null);
