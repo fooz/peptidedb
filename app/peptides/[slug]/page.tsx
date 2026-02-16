@@ -1,10 +1,8 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPeptideDetail } from "@/lib/repository";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ view?: "consumer" | "clinical" } | undefined>;
 };
 
 function statusLabel(value: string): string {
@@ -22,10 +20,8 @@ function formatDate(value: string): string {
   return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 
-export default async function PeptideDetailPage({ params, searchParams }: PageProps) {
+export default async function PeptideDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const resolvedSearchParams = await searchParams;
-  const view = resolvedSearchParams?.view === "clinical" ? "clinical" : "consumer";
   const peptide = await getPeptideDetail(slug);
 
   if (!peptide) {
@@ -43,15 +39,9 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
             </span>
           ))}
         </div>
-        <p>{view === "consumer" ? peptide.intro : peptide.mechanism}</p>
-        <div className="hero-actions">
-          <Link className={`btn ${view === "consumer" ? "active" : ""}`} href={`/peptides/${peptide.slug}?view=consumer`}>
-            Consumer View
-          </Link>
-          <Link className={`btn ${view === "clinical" ? "active" : ""}`} href={`/peptides/${peptide.slug}?view=clinical`}>
-            Clinical View
-          </Link>
-        </div>
+        <p>{peptide.intro}</p>
+        <h3>Clinical view:</h3>
+        <p>{peptide.mechanism}</p>
       </section>
 
       <section className="card">
