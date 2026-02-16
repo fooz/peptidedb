@@ -11,10 +11,16 @@ type PageProps = {
 };
 
 function statusLabel(value: string): string {
-  return value
-    .replaceAll("_", " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (char) => char.toUpperCase());
+  if (value === "US_FDA_APPROVED") {
+    return "FDA Approved";
+  }
+  if (value === "NON_US_APPROVED") {
+    return "Approved";
+  }
+  if (value === "INVESTIGATIONAL" || value === "RESEARCH_ONLY") {
+    return "Not approved";
+  }
+  return "Not approved";
 }
 
 function formatDate(value: string): string {
