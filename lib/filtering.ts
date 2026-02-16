@@ -13,8 +13,8 @@ export type PeptideFilters = {
 export type VendorFilters = {
   q: string;
   minRating: number | null;
-  affiliate: "all" | "yes" | "no";
   ratingState: "all" | "rated" | "unrated";
+  reasonTag: string;
 };
 
 type SearchValue = string | string[] | undefined;
@@ -59,19 +59,17 @@ export function parsePeptideFilters(searchParams?: SearchParams): PeptideFilters
 export function parseVendorFilters(searchParams?: SearchParams): VendorFilters {
   const q = asSingle(searchParams?.q);
   const minRatingRaw = asSingle(searchParams?.minRating);
-  const affiliateRaw = asSingle(searchParams?.affiliate);
   const ratingStateRaw = asSingle(searchParams?.ratingState);
+  const reasonTag = asSingle(searchParams?.reasonTag).toLowerCase();
 
   const parsedMin = minRatingRaw ? Number(minRatingRaw) : null;
   const minRating =
     parsedMin !== null && Number.isFinite(parsedMin) && parsedMin >= 0 && parsedMin <= 5 ? parsedMin : null;
 
-  const affiliate: VendorFilters["affiliate"] =
-    affiliateRaw === "yes" || affiliateRaw === "no" ? affiliateRaw : "all";
   const ratingState: VendorFilters["ratingState"] =
     ratingStateRaw === "rated" || ratingStateRaw === "unrated" ? ratingStateRaw : "all";
 
-  return { q, minRating, affiliate, ratingState };
+  return { q, minRating, ratingState, reasonTag };
 }
 
 export function filterPeptides(peptides: PeptideSummary[], filters: PeptideFilters): PeptideSummary[] {
@@ -127,11 +125,11 @@ export function filterVendors(vendors: VendorCard[], filters: VendorFilters): Ve
       return false;
     }
 
-    if (filters.affiliate === "yes" && !vendor.isAffiliate) {
-      return false;
-    }
-    if (filters.affiliate === "no" && vendor.isAffiliate) {
-      return false;
+    if (filters.reasonTag) {
+      const hasTag = vendor.reasonTags.some((reasonTag) => reasonTag.toLowerCase() === filters.reasonTag);
+      if (!hasTag) {
+        return false;
+      }
     }
 
     if (filters.ratingState === "rated" && vendor.rating === null) {
