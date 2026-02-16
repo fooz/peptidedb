@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { StarRating } from "@/app/components/star-rating";
 import { getPeptideDetail } from "@/lib/repository";
+import { absoluteUrl, safeJsonLd } from "@/lib/seo";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -20,6 +23,31 @@ function formatDate(value: string): string {
   return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const peptide = await getPeptideDetail(slug);
+  if (!peptide) {
+    return {
+      title: "Peptide Not Found",
+      robots: { index: false, follow: false }
+    };
+  }
+
+  return {
+    title: peptide.name,
+    description: peptide.intro,
+    alternates: {
+      canonical: `/peptides/${peptide.slug}`
+    },
+    openGraph: {
+      type: "article",
+      title: `${peptide.name} Reference`,
+      description: peptide.intro,
+      url: absoluteUrl(`/peptides/${peptide.slug}`)
+    }
+  };
+}
+
 export default async function PeptideDetailPage({ params }: PageProps) {
   const { slug } = await params;
   const peptide = await getPeptideDetail(slug);
@@ -28,10 +56,37 @@ export default async function PeptideDetailPage({ params }: PageProps) {
     notFound();
   }
 
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "MedicalWebPage",
+    name: `${peptide.name} Peptide Reference`,
+    url: absoluteUrl(`/peptides/${peptide.slug}`),
+    description: peptide.intro,
+    about: {
+      "@type": "MedicalEntity",
+      name: peptide.name,
+      alternateName: peptide.aliases,
+      description: peptide.longDescription
+    },
+    mainEntity: {
+      "@type": "MedicalEntity",
+      name: peptide.name,
+      alternateName: peptide.aliases,
+      description: peptide.longDescription
+    },
+    citation: peptide.evidenceClaims.slice(0, 20).map((claim) => ({
+      "@type": "CreativeWork",
+      name: claim.sourceTitle ?? "Evidence source",
+      url: claim.sourceUrl,
+      datePublished: claim.publishedAt
+    }))
+  };
+
   return (
-    <div className="grid">
+    <article className="grid" itemScope itemType="https://schema.org/MedicalEntity">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(structuredData) }} />
       <section className="card hero">
-        <h1>{peptide.name}</h1>
+        <h1 itemProp="name">{peptide.name}</h1>
         <div className="meta-row">
           {Object.entries(peptide.statusByJurisdiction).map(([jurisdiction, status]) => (
             <span key={jurisdiction} className="chip">
@@ -39,7 +94,7 @@ export default async function PeptideDetailPage({ params }: PageProps) {
             </span>
           ))}
         </div>
-        <p>{peptide.intro}</p>
+        <p itemProp="description">{peptide.intro}</p>
         <h3>Clinical view:</h3>
         <p>{peptide.mechanism}</p>
       </section>
@@ -126,21 +181,23 @@ export default async function PeptideDetailPage({ params }: PageProps) {
         <h2>Vendors</h2>
         <div className="grid two">
           {peptide.vendors.map((vendor) => (
-            <article className="card" key={vendor.slug}>
-              <h3>{vendor.name}</h3>
+            <article className="card" key={vendor.slug} itemScope itemType="https://schema.org/Organization">
+              <h3 itemProp="name">{vendor.name}</h3>
               <p>
-                Rating:{" "}
-                <strong>
-                  {vendor.rating === null || vendor.confidence === null
-                    ? "No rating"
-                    : `${vendor.rating.toFixed(1)} stars`}
-                </strong>
+                Rating: <strong><StarRating rating={vendor.rating} idPrefix={`peptide-vendor-${vendor.slug}`} /></strong>
               </p>
               <p className="muted">
                 Confidence:{" "}
                 {vendor.confidence === null ? "N/A" : `${Math.round(vendor.confidence * 100)}%`}
               </p>
               <p className="muted">Signals: {vendor.reasonTags.join(", ")}</p>
+              {vendor.rating !== null ? (
+                <div itemProp="aggregateRating" itemScope itemType="https://schema.org/AggregateRating">
+                  <meta itemProp="ratingValue" content={vendor.rating.toFixed(1)} />
+                  <meta itemProp="bestRating" content="5" />
+                  <meta itemProp="worstRating" content="0" />
+                </div>
+              ) : null}
               {vendor.isAffiliate ? <span className="chip">Affiliate</span> : null}
             </article>
           ))}
@@ -149,7 +206,7 @@ export default async function PeptideDetailPage({ params }: PageProps) {
 
       <section className="card">
         <h2>Long Description</h2>
-        <p>{peptide.longDescription}</p>
+        <p itemProp="abstract">{peptide.longDescription}</p>
       </section>
 
       <section className="card">
@@ -185,6 +242,6 @@ export default async function PeptideDetailPage({ params }: PageProps) {
           </table>
         )}
       </section>
-    </div>
+    </article>
   );
 }

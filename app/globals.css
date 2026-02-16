@@ -448,10 +448,53 @@ td {
   font-size: 0.88rem;
 }
 
+.home-vendor-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .home-link-list {
   display: grid;
   gap: 0.4rem;
   margin-bottom: 0.7rem;
+}
+
+.rating-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  vertical-align: middle;
+}
+
+.rating-stars {
+  display: inline-flex;
+  gap: 0.1rem;
+  color: #d18b00;
+}
+
+.rating-star {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.rating-star-base {
+  fill: rgba(209, 139, 0, 0.22);
+}
+
+.rating-star-fill {
+  fill: currentColor;
+}
+
+.rating-value {
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.rating-empty {
+  color: var(--muted);
+  font-weight: 700;
 }
 
 .safety-grid {

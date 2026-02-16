@@ -1,5 +1,17 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { StarRating } from "@/app/components/star-rating";
 import { listPeptides, listVendors } from "@/lib/repository";
+import { absoluteUrl, safeJsonLd } from "@/lib/seo";
+
+export const metadata: Metadata = {
+  title: "Home",
+  description:
+    "Consumer-first peptide reference with embedded clinical context, jurisdiction status badges, and research-derived vendor ratings.",
+  alternates: {
+    canonical: "/"
+  }
+};
 
 export default async function HomePage() {
   const [peptides, vendors] = await Promise.all([listPeptides(), listVendors()]);
@@ -7,12 +19,30 @@ export default async function HomePage() {
   const ratedVendors = vendors.filter((vendor) => vendor.rating !== null);
   const unratedVendors = vendors.filter((vendor) => vendor.rating === null);
   const topRatedVendors = [...ratedVendors].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)).slice(0, 3);
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: "PeptideDB Home",
+    url: absoluteUrl("/"),
+    description:
+      "Consumer-first peptide reference with embedded clinical context, jurisdiction status badges, and research-derived vendor ratings.",
+    mainEntity: {
+      "@type": "ItemList",
+      itemListElement: featuredPeptides.map((peptide, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        url: absoluteUrl(`/peptides/${peptide.slug}`),
+        name: peptide.name
+      }))
+    }
+  };
 
   return (
-    <div className="grid">
-      <section className="card hero">
+    <div className="grid" itemScope itemType="https://schema.org/WebPage">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(structuredData) }} />
+      <section className="card hero" itemProp="mainEntity" itemScope itemType="https://schema.org/WebSite">
         <h1>Peptide Reference Database</h1>
-        <p className="muted">
+        <p className="muted" itemProp="description">
           Consumer-first peptide reference with embedded clinical context, evidence grading, jurisdiction badges
           (US/EU/UK/CA/AU), and research-based vendor reliability scoring.
         </p>
@@ -48,16 +78,26 @@ export default async function HomePage() {
             </Link>
           </div>
         </article>
-        <article className="card">
+        <article className="card" itemScope itemType="https://schema.org/ItemList">
           <h2>Rating Policy</h2>
           <p className="muted">
             Ratings are research-derived and non-user-submitted: <strong>{ratedVendors.length}</strong> rated,{" "}
             <strong>{unratedVendors.length}</strong> no rating.
           </p>
           <div className="home-link-list">
-            {topRatedVendors.map((vendor) => (
-              <Link key={vendor.slug} href={`/vendors?q=${encodeURIComponent(vendor.name)}`} className="subtle-link">
-                {vendor.name} ({vendor.rating?.toFixed(1)} stars)
+            {topRatedVendors.map((vendor, index) => (
+              <Link
+                key={vendor.slug}
+                href={`/vendors?q=${encodeURIComponent(vendor.name)}`}
+                className="subtle-link home-vendor-link"
+                itemProp="itemListElement"
+                itemScope
+                itemType="https://schema.org/ListItem"
+              >
+                <span itemProp="name">
+                  {vendor.name} <StarRating rating={vendor.rating} idPrefix={`home-${vendor.slug}`} />
+                </span>
+                <meta itemProp="position" content={String(index + 1)} />
               </Link>
             ))}
           </div>

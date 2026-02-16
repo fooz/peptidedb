@@ -1,7 +1,9 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { EVIDENCE_GRADES, JURISDICTIONS, REGULATORY_STATUSES, labelFromSnake } from "@/lib/constants";
 import { filterPeptides, parsePeptideFilters } from "@/lib/filtering";
 import { listPeptides } from "@/lib/repository";
+import { absoluteUrl, safeJsonLd } from "@/lib/seo";
 
 type SearchValue = string | string[] | undefined;
 type SearchParams = Record<string, SearchValue>;
@@ -16,17 +18,44 @@ type PageProps = {
   searchParams: Promise<SearchParams | undefined>;
 };
 
+export const metadata: Metadata = {
+  title: "Peptides",
+  description:
+    "Peptide directory with filters for use cases, evidence grade, jurisdiction, and regulatory status.",
+  alternates: {
+    canonical: "/peptides"
+  }
+};
+
 export default async function PeptidesPage({ searchParams }: PageProps) {
   const resolvedSearchParams = await searchParams;
   const filters = parsePeptideFilters(resolvedSearchParams);
   const peptides = await listPeptides();
   const filtered = filterPeptides(peptides, filters);
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "Peptide Directory",
+    url: absoluteUrl("/peptides"),
+    description: "Peptide directory with filters for use cases, evidence grade, and regulatory status.",
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: filtered.length,
+      itemListElement: filtered.slice(0, 100).map((peptide, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        url: absoluteUrl(`/peptides/${peptide.slug}`),
+        name: peptide.name
+      }))
+    }
+  };
 
   const useCaseOptions = uniqueSorted(peptides.flatMap((peptide) => peptide.useCases));
   const routeOptions = uniqueSorted(peptides.flatMap((peptide) => peptide.routes));
 
   return (
-    <div className="grid">
+    <div className="grid" itemScope itemType="https://schema.org/CollectionPage">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(structuredData) }} />
       <section className="card">
         <h1>Peptide Directory</h1>
         <p className="muted">
@@ -117,9 +146,11 @@ export default async function PeptidesPage({ searchParams }: PageProps) {
       </section>
 
       {filtered.map((peptide) => (
-        <article key={peptide.slug} className="card">
+        <article key={peptide.slug} className="card" itemScope itemType="https://schema.org/MedicalEntity">
           <h2>
-            <Link href={`/peptides/${peptide.slug}`}>{peptide.name}</Link>
+            <Link href={`/peptides/${peptide.slug}`} itemProp="url">
+              <span itemProp="name">{peptide.name}</span>
+            </Link>
           </h2>
           <p className="muted">
             Class: {peptide.className}

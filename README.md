@@ -16,6 +16,7 @@ Consumer-first peptide reference database with embedded clinical sections, evide
    ```
 2. Create `.env.local` from `.env.example`.
 3. Fill:
+   - `NEXT_PUBLIC_SITE_URL` (production domain, e.g. `https://yourdomain.com`)
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
@@ -37,6 +38,7 @@ Consumer-first peptide reference database with embedded clinical sections, evide
 ## Vercel setup (non-technical)
 1. In Vercel project settings, open `Environment Variables`.
 2. Add:
+   - `NEXT_PUBLIC_SITE_URL`
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`

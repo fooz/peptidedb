@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { logoutAdminAction } from "@/app/admin/auth-actions";
 import {
   addCitationClaimAction,
@@ -24,6 +25,14 @@ type SearchParams = Record<string, SearchValue>;
 
 type PageProps = {
   searchParams: Promise<SearchParams | undefined>;
+};
+
+export const metadata: Metadata = {
+  title: "Admin",
+  robots: {
+    index: false,
+    follow: false
+  }
 };
 
 function firstParam(value: SearchValue): string {

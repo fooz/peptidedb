@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { loginAdminAction } from "@/app/admin/auth-actions";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 
@@ -11,6 +12,14 @@ function getFirst(value: SearchValue): string {
 
 type PageProps = {
   searchParams: Promise<SearchParams | undefined>;
+};
+
+export const metadata: Metadata = {
+  title: "Admin Login",
+  robots: {
+    index: false,
+    follow: false
+  }
 };
 
 export default async function AdminLoginPage({ searchParams }: PageProps) {
