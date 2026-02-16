@@ -21,6 +21,7 @@ export default function RootLayout({
             <nav style={{ display: "flex", gap: "0.8rem" }}>
               <Link href="/peptides">Peptides</Link>
               <Link href="/vendors">Vendors</Link>
+              <Link href="/admin">Admin</Link>
             </nav>
           </div>
         </header>

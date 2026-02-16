@@ -12,6 +12,33 @@ CREATE TABLE IF NOT EXISTS peptide_profiles (
   long_description TEXT
 );
 
+ALTER TABLE peptides ADD COLUMN IF NOT EXISTS is_published BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE vendors ADD COLUMN IF NOT EXISTS is_published BOOLEAN NOT NULL DEFAULT FALSE;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'peptide_use_cases_peptide_id_use_case_id_jurisdiction_id_key'
+  ) THEN
+    ALTER TABLE peptide_use_cases
+      ADD CONSTRAINT peptide_use_cases_peptide_id_use_case_id_jurisdiction_id_key
+      UNIQUE (peptide_id, use_case_id, jurisdiction_id);
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'peptide_safety_entries_peptide_id_jurisdiction_id_key'
+  ) THEN
+    ALTER TABLE peptide_safety_entries
+      ADD CONSTRAINT peptide_safety_entries_peptide_id_jurisdiction_id_key
+      UNIQUE (peptide_id, jurisdiction_id);
+  END IF;
+END $$;
+
 INSERT INTO jurisdictions (code, name) VALUES
   ('US', 'United States'),
   ('EU', 'European Union'),
@@ -27,14 +54,15 @@ INSERT INTO use_cases (slug, name) VALUES
   ('gi-symptoms', 'GI Symptoms')
 ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name;
 
-INSERT INTO peptides (slug, canonical_name, sequence, peptide_class)
+INSERT INTO peptides (slug, canonical_name, sequence, peptide_class, is_published)
 VALUES
-  ('semaglutide', 'Semaglutide', NULL, 'GLP-1 receptor agonist peptide'),
-  ('bpc-157', 'BPC-157', NULL, 'Synthetic gastric peptide fragment')
+  ('semaglutide', 'Semaglutide', NULL, 'GLP-1 receptor agonist peptide', TRUE),
+  ('bpc-157', 'BPC-157', NULL, 'Synthetic gastric peptide fragment', TRUE)
 ON CONFLICT (slug) DO UPDATE
 SET
   canonical_name = EXCLUDED.canonical_name,
-  peptide_class = EXCLUDED.peptide_class;
+  peptide_class = EXCLUDED.peptide_class,
+  is_published = EXCLUDED.is_published;
 
 INSERT INTO peptide_profiles (peptide_id, intro, mechanism, effectiveness_summary, long_description)
 SELECT
@@ -196,15 +224,16 @@ WHERE NOT EXISTS (
     AND x.jurisdiction_id = j.id
 );
 
-INSERT INTO vendors (slug, name, website_url)
+INSERT INTO vendors (slug, name, website_url, is_published)
 VALUES
-  ('nova-peptide-labs', 'Nova Peptide Labs', 'https://example.com/nova'),
-  ('atlas-biologics', 'Atlas Biologics', 'https://example.com/atlas'),
-  ('unknown-source-vendor', 'Unknown Source Vendor', 'https://example.com/unknown')
+  ('nova-peptide-labs', 'Nova Peptide Labs', 'https://example.com/nova', TRUE),
+  ('atlas-biologics', 'Atlas Biologics', 'https://example.com/atlas', TRUE),
+  ('unknown-source-vendor', 'Unknown Source Vendor', 'https://example.com/unknown', TRUE)
 ON CONFLICT (slug) DO UPDATE
 SET
   name = EXCLUDED.name,
-  website_url = EXCLUDED.website_url;
+  website_url = EXCLUDED.website_url,
+  is_published = EXCLUDED.is_published;
 
 INSERT INTO vendor_peptide_listings (vendor_id, peptide_id, is_affiliate, affiliate_url, product_url)
 SELECT

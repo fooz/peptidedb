@@ -293,6 +293,7 @@ export async function listPeptides(): Promise<PeptideSummary[]> {
     .select(
       "id,slug,canonical_name,peptide_class,peptide_aliases(alias),peptide_use_cases(evidence_grade,consumer_summary,clinical_summary,use_cases(name)),peptide_dosing_entries(route),peptide_regulatory_status(status,jurisdictions(code))"
     )
+    .eq("is_published", true)
     .order("canonical_name", { ascending: true });
 
   if (error || !data || data.length === 0) {
@@ -319,6 +320,7 @@ export async function getPeptideDetail(slug: string): Promise<PeptideDetail | nu
       "id,slug,canonical_name,sequence,peptide_class,peptide_aliases(alias),peptide_profiles(intro,mechanism,effectiveness_summary,long_description),peptide_use_cases(evidence_grade,consumer_summary,clinical_summary,use_cases(name)),peptide_dosing_entries(context,population,route,starting_dose,maintenance_dose,frequency,notes),peptide_safety_entries(adverse_effects,contraindications,interactions,monitoring),peptide_regulatory_status(status,jurisdictions(code))"
     )
     .eq("slug", slug)
+    .eq("is_published", true)
     .maybeSingle();
 
   if (error || !data) {
@@ -347,7 +349,7 @@ export async function getPeptideDetail(slug: string): Promise<PeptideDetail | nu
 
   const { data: listingRows } = await supabase
     .from("vendor_peptide_listings")
-    .select("is_affiliate,vendors(id,slug,name)")
+    .select("is_affiliate,vendors(id,slug,name,is_published)")
     .eq("peptide_id", peptideId);
 
   const vendorIdList = uniqueStrings(
@@ -375,8 +377,9 @@ export async function getPeptideDetail(slug: string): Promise<PeptideDetail | nu
       const vendorId = asNumber(vendor.id);
       const vendorName = asString(vendor.name);
       const vendorSlug = asString(vendor.slug);
+      const isPublished = Boolean(vendor.is_published);
 
-      if (vendorId === null || !vendorName || !vendorSlug) {
+      if (vendorId === null || !vendorName || !vendorSlug || !isPublished) {
         return null;
       }
 
@@ -441,7 +444,7 @@ export async function listVendors(): Promise<VendorCard[]> {
   }
 
   const [{ data: vendorsData, error: vendorsError }, { data: listingData }, ratings] = await Promise.all([
-    supabase.from("vendors").select("id,slug,name").order("name", { ascending: true }),
+    supabase.from("vendors").select("id,slug,name").eq("is_published", true).order("name", { ascending: true }),
     supabase.from("vendor_peptide_listings").select("vendor_id,is_affiliate"),
     supabase.from("vendor_rating_snapshots").select("vendor_id,rating,confidence,reason_tags").eq("is_current", true)
   ]);

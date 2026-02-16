@@ -17,6 +17,7 @@ CREATE TABLE peptides (
   canonical_name TEXT NOT NULL,
   sequence TEXT,
   peptide_class TEXT,
+  is_published BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -57,7 +58,8 @@ CREATE TABLE peptide_use_cases (
   jurisdiction_id BIGINT REFERENCES jurisdictions(id),
   evidence_grade evidence_grade NOT NULL DEFAULT 'I',
   consumer_summary TEXT,
-  clinical_summary TEXT
+  clinical_summary TEXT,
+  UNIQUE (peptide_id, use_case_id, jurisdiction_id)
 );
 
 CREATE TABLE peptide_dosing_entries (
@@ -80,7 +82,8 @@ CREATE TABLE peptide_safety_entries (
   adverse_effects TEXT,
   contraindications TEXT,
   interactions TEXT,
-  monitoring TEXT
+  monitoring TEXT,
+  UNIQUE (peptide_id, jurisdiction_id)
 );
 
 CREATE TABLE vendors (
@@ -88,6 +91,7 @@ CREATE TABLE vendors (
   slug TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
   website_url TEXT,
+  is_published BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

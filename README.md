@@ -18,6 +18,9 @@ Consumer-first peptide reference database with a clinical toggle, evidence track
 3. Fill:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `ADMIN_USERNAME` (default: `admin`)
+   - `ADMIN_PASSWORD` (required for `/admin` login)
 4. Start:
    ```bash
    npm run dev
@@ -28,12 +31,16 @@ Consumer-first peptide reference database with a clinical toggle, evidence track
 2. Run `db/schema.sql`.
 3. Run `db/bootstrap.sql`.
 4. Confirm storage bucket exists: `vendor-docs` (private).
+5. If you already ran bootstrap before this commit, re-run `db/bootstrap.sql` once to apply new `is_published` columns and constraints.
 
 ## Vercel setup (non-technical)
 1. In Vercel project settings, open `Environment Variables`.
 2. Add:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `ADMIN_USERNAME`
+   - `ADMIN_PASSWORD`
 3. Redeploy.
 
 ## DreamHost domain mapping
@@ -45,11 +52,14 @@ Consumer-first peptide reference database with a clinical toggle, evidence track
 ## Current scaffold status
 - Home, peptide directory, peptide detail template, vendor directory
 - Consumer/clinical toggle on peptide pages
+- Faceted filters for peptide and vendor directories
+- Draft vs published visibility (`is_published`) on peptides and vendors
+- Password-protected admin dashboard at `/admin`
 - Supabase-backed reads with fallback data if tables are empty
 - Health endpoint: `/api/health`
 
 ## Next implementation steps
-1. Add authenticated admin tools to curate peptides/vendors from UI.
-2. Build admin ingestion routes for studies/regulatory data.
-3. Add Typesense-backed faceted search.
-4. Add vendor rating calculation worker + snapshots.
+1. Build admin ingestion routes for studies/regulatory data.
+2. Add Typesense-backed faceted search.
+3. Add vendor rating calculation worker + snapshots.
+4. Add editorial workflow states (draft, review, approved) beyond publish toggle.
