@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json --incremental false"
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json --incremental false",
+    "enrich:content": "npx --yes tsx scripts/enrich-peptide-content.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",

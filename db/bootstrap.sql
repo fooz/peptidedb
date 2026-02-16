@@ -34,6 +34,34 @@ ALTER TABLE peptides ADD COLUMN IF NOT EXISTS is_published BOOLEAN NOT NULL DEFA
 ALTER TABLE peptides ADD COLUMN IF NOT EXISTS last_live_refresh_at TIMESTAMPTZ;
 ALTER TABLE vendors ADD COLUMN IF NOT EXISTS is_published BOOLEAN NOT NULL DEFAULT FALSE;
 
+DELETE FROM vendors
+WHERE slug = 'unknown-source-vendor'
+   OR lower(btrim(name)) = 'unknown source vendor';
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'vendors_slug_not_unknown_source_vendor'
+  ) THEN
+    ALTER TABLE vendors
+      ADD CONSTRAINT vendors_slug_not_unknown_source_vendor
+      CHECK (lower(slug) <> 'unknown-source-vendor');
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'vendors_name_not_unknown_source_vendor'
+  ) THEN
+    ALTER TABLE vendors
+      ADD CONSTRAINT vendors_name_not_unknown_source_vendor
+      CHECK (lower(btrim(name)) <> 'unknown source vendor');
+  END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS vendor_profiles (
   vendor_id BIGINT PRIMARY KEY REFERENCES vendors(id) ON DELETE CASCADE,
   description TEXT,
@@ -300,8 +328,7 @@ WHERE NOT EXISTS (
 INSERT INTO vendors (slug, name, website_url, is_published)
 VALUES
   ('nova-peptide-labs', 'Nova Peptide Labs', 'https://example.com/nova', TRUE),
-  ('atlas-biologics', 'Atlas Biologics', 'https://example.com/atlas', TRUE),
-  ('unknown-source-vendor', 'Unknown Source Vendor', 'https://example.com/unknown', TRUE)
+  ('atlas-biologics', 'Atlas Biologics', 'https://example.com/atlas', TRUE)
 ON CONFLICT (slug) DO UPDATE
 SET
   name = EXCLUDED.name,
@@ -319,7 +346,6 @@ FROM (
   VALUES
     ('nova-peptide-labs', 'semaglutide', true, 'https://example.com/aff/nova/semaglutide', 'https://example.com/nova/semaglutide'),
     ('atlas-biologics', 'semaglutide', false, NULL, 'https://example.com/atlas/semaglutide'),
-    ('unknown-source-vendor', 'semaglutide', false, NULL, 'https://example.com/unknown/semaglutide'),
     ('nova-peptide-labs', 'bpc-157', true, 'https://example.com/aff/nova/bpc-157', 'https://example.com/nova/bpc-157'),
     ('atlas-biologics', 'bpc-157', false, NULL, 'https://example.com/atlas/bpc-157')
 ) AS l(vendor_slug, peptide_slug, is_affiliate, affiliate_url, product_url)
@@ -346,8 +372,7 @@ SELECT
 FROM (
   VALUES
     ('nova-peptide-labs', 4.4::numeric, 0.82::numeric, ARRAY['third_party_lab_docs', 'cold_chain_policy', 'regulatory_clear_history']::text[]),
-    ('atlas-biologics', 3.6::numeric, 0.67::numeric, ARRAY['coa_available', 'limited_recent_testing']::text[]),
-    ('unknown-source-vendor', NULL::numeric, NULL::numeric, ARRAY['insufficient_data']::text[])
+    ('atlas-biologics', 3.6::numeric, 0.67::numeric, ARRAY['coa_available', 'limited_recent_testing']::text[])
 ) AS r(vendor_slug, rating, confidence, reason_tags)
 JOIN vendors v ON v.slug = r.vendor_slug;
 

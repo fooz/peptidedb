@@ -147,7 +147,7 @@ async function getRecentPubmedClaims(peptideName: string, maxItems: number): Pro
     const pubDate = toIsoDate(asString(entry.pubdate));
     claims.push({
       section: PUBMED_SECTION,
-      claimText: `Live refresh: Recent PubMed publication (PMID ${id}) reports "${title}".`,
+      claimText: `Recent PubMed publication (PMID ${id}) reports "${title}".`,
       evidenceGrade: inferPubmedGrade(title),
       sourceUrl: `https://pubmed.ncbi.nlm.nih.gov/${encodeURIComponent(id)}/`,
       sourceTitle: `PubMed PMID ${id}`,
@@ -192,7 +192,7 @@ async function getRecentClinicalTrialsClaims(peptideName: string, maxItems: numb
     const statusText = overallStatus || "Status not reported";
     claims.push({
       section: CLINICAL_TRIALS_SECTION,
-      claimText: `Live refresh: ClinicalTrials.gov study ${nctId} ("${briefTitle}") is listed as ${statusText}.`,
+      claimText: `ClinicalTrials.gov study ${nctId} ("${briefTitle}") is listed as ${statusText}.`,
       evidenceGrade: inferTrialsGrade(studyType, statusText),
       sourceUrl: `https://clinicaltrials.gov/study/${encodeURIComponent(nctId)}`,
       sourceTitle: `ClinicalTrials.gov ${nctId}`,
@@ -255,8 +255,7 @@ async function upsertLiveClaimsForPeptide(
     .from("peptide_claims")
     .delete()
     .eq("peptide_id", peptideId)
-    .in("section", LIVE_SECTIONS)
-    .like("claim_text", "Live refresh:%");
+    .in("section", LIVE_SECTIONS);
 
   if (clearError) {
     throw new Error(clearError.message);

@@ -107,8 +107,8 @@ CREATE TABLE peptide_claims (
 
 CREATE TABLE vendors (
   id BIGSERIAL PRIMARY KEY,
-  slug TEXT UNIQUE NOT NULL,
-  name TEXT NOT NULL,
+  slug TEXT UNIQUE NOT NULL CHECK (lower(slug) <> 'unknown-source-vendor'),
+  name TEXT NOT NULL CHECK (lower(btrim(name)) <> 'unknown source vendor'),
   website_url TEXT,
   is_published BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()

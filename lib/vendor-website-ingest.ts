@@ -32,6 +32,8 @@ type VendorCatalogIngestResult = {
 const JURISDICTION_CODES = ["US", "EU", "UK", "CA", "AU"] as const;
 
 const PEPTIDE_CLASS_FALLBACK = "Commercial peptide listing";
+const BLOCKED_VENDOR_SLUGS = new Set(["unknown-source-vendor"]);
+const BLOCKED_VENDOR_NAMES = new Set(["unknown source vendor"]);
 
 const TRUST_SIGNAL_WEIGHT: Record<string, number> = {
   coa_published: 0.95,
@@ -379,6 +381,12 @@ function slugify(value: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+function isBlockedVendorPlaceholder(slug: string, name: string): boolean {
+  const normalizedSlug = slugify(slug);
+  const normalizedName = name.trim().toLowerCase().replace(/\s+/g, " ");
+  return BLOCKED_VENDOR_SLUGS.has(normalizedSlug) || BLOCKED_VENDOR_NAMES.has(normalizedName);
+}
+
 function titleCase(value: string): string {
   return value
     .replace(/\s+/g, " ")
@@ -711,6 +719,9 @@ export async function ingestVendorWebsiteCatalog(supabase: SupabaseClient): Prom
   let sourcePagesFailed = 0;
 
   for (const seed of VENDOR_SEEDS) {
+    if (isBlockedVendorPlaceholder(seed.slug, seed.name)) {
+      continue;
+    }
     vendorsProcessed += 1;
     const { data: vendorBefore } = await supabase.from("vendors").select("id").eq("slug", seed.slug).maybeSingle();
     const { data: vendorRow, error: vendorError } = await supabase

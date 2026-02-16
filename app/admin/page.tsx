@@ -6,6 +6,7 @@ import {
   addDosingAction,
   addUseCaseAction,
   deleteCitationClaimAction,
+  enrichPeptideContentAction,
   ingestClinicalTrialsCatalogAction,
   ingestExpandedDatasetAction,
   ingestVendorWebsiteCatalogAction,
@@ -83,6 +84,7 @@ export default async function AdminPage({ searchParams }: PageProps) {
             refreshLiveEvidenceAction={refreshLiveEvidenceAction}
             ingestClinicalTrialsCatalogAction={ingestClinicalTrialsCatalogAction}
             ingestVendorWebsiteCatalogAction={ingestVendorWebsiteCatalogAction}
+            enrichPeptideContentAction={enrichPeptideContentAction}
           />
         </div>
         {notice ? <p className={`notice ${kind === "error" ? "error" : "success"}`}>{notice}</p> : null}

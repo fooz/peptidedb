@@ -16,14 +16,6 @@ const vendors: VendorCard[] = [
     confidence: 0.67,
     reasonTags: ["coa_available", "limited_recent_testing"],
     isAffiliate: false
-  },
-  {
-    slug: "unknown-source-vendor",
-    name: "Unknown Source Vendor",
-    rating: null,
-    confidence: null,
-    reasonTags: ["insufficient_data"],
-    isAffiliate: false
   }
 ];
 

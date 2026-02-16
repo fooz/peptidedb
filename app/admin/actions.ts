@@ -6,8 +6,12 @@ import { assertAdminAuth } from "@/lib/admin-auth";
 import { ingestClinicalTrialsCatalog } from "@/lib/clinicaltrials-catalog-ingest";
 import { ingestExpandedPeptideDataset } from "@/lib/expanded-dataset-ingest";
 import { refreshLiveEvidenceClaims } from "@/lib/live-evidence-refresh";
+import { enrichPeptideContent } from "@/lib/peptide-content-enrichment";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 import { ingestVendorWebsiteCatalog } from "@/lib/vendor-website-ingest";
+
+const BLOCKED_VENDOR_SLUGS = new Set(["unknown-source-vendor"]);
+const BLOCKED_VENDOR_NAMES = new Set(["unknown source vendor"]);
 
 function clean(value: FormDataEntryValue | null): string {
   return String(value ?? "").trim();
@@ -22,6 +26,12 @@ function slugify(value: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+function isBlockedVendorPlaceholder(slug: string, name: string): boolean {
+  const normalizedSlug = slugify(slug);
+  const normalizedName = name.trim().toLowerCase().replace(/\s+/g, " ");
+  return BLOCKED_VENDOR_SLUGS.has(normalizedSlug) || BLOCKED_VENDOR_NAMES.has(normalizedName);
 }
 
 function redirectNotice(message: string, kind: "success" | "error" = "success") {
@@ -456,6 +466,21 @@ export async function ingestVendorWebsiteCatalogAction() {
   }
 }
 
+export async function enrichPeptideContentAction() {
+  await assertAdminAuth();
+  try {
+    const supabase = requireSupabaseAdmin();
+    const result = await enrichPeptideContent(supabase, { onlyPublished: true, limit: 40, delayMs: 110 });
+    redirectNotice(
+      `External-source enrichment complete: ${result.peptidesUpdated}/${result.peptidesScanned} peptides updated, ${result.failures} failed. Source hits -> openFDA ${result.sourceHits.openFda}, PubChem ${result.sourceHits.pubChem}, ChEMBL ${result.sourceHits.chembl}, ClinicalTrials ${result.sourceHits.clinicalTrials}, PubMed ${result.sourceHits.pubMed}.`
+    );
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    const message = error instanceof Error ? error.message : "Failed to run peptide content enrichment.";
+    redirectNotice(message, "error");
+  }
+}
+
 export async function upsertVendorAction(formData: FormData) {
   await assertAdminAuth();
   try {
@@ -468,6 +493,9 @@ export async function upsertVendorAction(formData: FormData) {
     const slug = slugify(slugInput || name);
     if (!slug || !name) {
       redirectNotice("Vendor name and slug are required.", "error");
+    }
+    if (isBlockedVendorPlaceholder(slug, name)) {
+      redirectNotice("This placeholder vendor is blocked and cannot be saved.", "error");
     }
 
     const { error } = await supabase.from("vendors").upsert(
