@@ -5,6 +5,7 @@ import {
   addDosingAction,
   addUseCaseAction,
   deleteCitationClaimAction,
+  ingestExpandedDatasetAction,
   upsertPeptideAction,
   upsertSafetyAction,
   upsertVendorAction,
@@ -63,6 +64,11 @@ export default async function AdminPage({ searchParams }: PageProps) {
           <span className="kpi-pill">{data.vendors.length} vendors</span>
           <span className="kpi-pill">{data.supabaseConfigured ? "Supabase connected" : "Supabase missing config"}</span>
         </div>
+        <form action={ingestExpandedDatasetAction} className="hero-actions">
+          <button className="btn primary" type="submit">
+            Ingest Expanded Peptide Dataset
+          </button>
+        </form>
         {notice ? <p className={`notice ${kind === "error" ? "error" : "success"}`}>{notice}</p> : null}
       </section>
 

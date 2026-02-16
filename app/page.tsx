@@ -6,13 +6,13 @@ export default function HomePage() {
       <section className="card hero">
         <h1>Peptide Reference Database</h1>
         <p className="muted">
-          Consumer-first peptide reference with a clinical toggle, evidence grading, jurisdiction badges
+          Consumer-first peptide reference with embedded clinical context, evidence grading, jurisdiction badges
           (US/EU/UK/CA/AU), and research-based vendor reliability scoring.
         </p>
         <div className="meta-row" style={{ marginBottom: "0.9rem" }}>
           <span className="kpi-pill">US and non-US status separation</span>
           <span className="kpi-pill">Research-derived vendor ratings</span>
-          <span className="kpi-pill">Consumer and clinical views</span>
+          <span className="kpi-pill">Consumer text plus clinical section</span>
         </div>
         <div className="hero-actions">
           <Link className="btn primary" href="/peptides">

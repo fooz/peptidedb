@@ -1,6 +1,6 @@
 # PeptideDB
 
-Consumer-first peptide reference database with a clinical toggle, evidence tracking, and vendor reliability scoring.
+Consumer-first peptide reference database with embedded clinical sections, evidence tracking, and vendor reliability scoring.
 
 ## Stack
 - Next.js (web app and API routes)
@@ -51,11 +51,12 @@ Consumer-first peptide reference database with a clinical toggle, evidence track
 
 ## Current scaffold status
 - Home, peptide directory, peptide detail template, vendor directory
-- Consumer/clinical toggle on peptide pages
+- Consumer text with inline `Clinical view` section on peptide pages
 - Faceted filters for peptide and vendor directories
 - Draft vs published visibility (`is_published`) on peptides and vendors
 - Password-protected admin dashboard at `/admin`
 - Citation claim workflow in admin (requires source URL + publication date)
+- One-click expanded dataset ingest button in `/admin`
 - Evidence and references section on peptide detail pages
 - Supabase-backed reads with fallback data if tables are empty
 - Health endpoint: `/api/health`

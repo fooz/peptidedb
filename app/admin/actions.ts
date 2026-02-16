@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { assertAdminAuth } from "@/lib/admin-auth";
+import { ingestExpandedPeptideDataset } from "@/lib/expanded-dataset-ingest";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 
 function clean(value: FormDataEntryValue | null): string {
@@ -389,6 +390,19 @@ export async function deleteCitationClaimAction(formData: FormData) {
   } catch (error) {
     rethrowIfRedirectError(error);
     const message = error instanceof Error ? error.message : "Failed to remove citation claim.";
+    redirectNotice(message, "error");
+  }
+}
+
+export async function ingestExpandedDatasetAction() {
+  await assertAdminAuth();
+  try {
+    const supabase = requireSupabaseAdmin();
+    const result = await ingestExpandedPeptideDataset(supabase);
+    redirectNotice(`Expanded ingest complete: ${result.processed} of ${result.total} peptides processed.`);
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    const message = error instanceof Error ? error.message : "Failed to run expanded ingest.";
     redirectNotice(message, "error");
   }
 }
