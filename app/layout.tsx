@@ -13,21 +13,24 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <header className="container">
-          <div className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <Link href="/">
-              <strong>PeptideDB</strong>
-            </Link>
-            <nav style={{ display: "flex", gap: "0.8rem" }}>
-              <Link href="/peptides">Peptides</Link>
-              <Link href="/vendors">Vendors</Link>
-              <Link href="/admin" prefetch={false}>
-                Admin
+        <header className="site-header">
+          <div className="container">
+            <div className="site-header-inner">
+              <Link href="/" className="brand-link">
+                <span className="brand-mark">PeptideDB</span>
+                <span className="brand-subtle">Evidence-first reference</span>
               </Link>
-            </nav>
+              <nav className="top-nav">
+                <Link href="/peptides">Peptides</Link>
+                <Link href="/vendors">Vendors</Link>
+                <Link href="/admin" prefetch={false}>
+                  Admin
+                </Link>
+              </nav>
+            </div>
           </div>
         </header>
-        <main className="container">{children}</main>
+        <main className="container site-main">{children}</main>
       </body>
     </html>
   );

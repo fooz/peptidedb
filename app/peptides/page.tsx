@@ -28,12 +28,12 @@ export default async function PeptidesPage({ searchParams }: PageProps) {
   return (
     <div className="grid">
       <section className="card">
-        <h1 style={{ marginTop: 0 }}>Peptide Directory</h1>
+        <h1>Peptide Directory</h1>
         <p className="muted">
           Filter by use case, evidence, jurisdiction, and status. This view is consumer-first and links to clinical
           detail on each page.
         </p>
-        <p className="muted" style={{ marginBottom: 0 }}>
+        <p className="muted">
           Showing <strong>{filtered.length}</strong> of <strong>{peptides.length}</strong> peptides.
         </p>
       </section>
@@ -42,17 +42,12 @@ export default async function PeptidesPage({ searchParams }: PageProps) {
         <form action="/peptides" method="get" className="grid two">
           <label>
             Search
-            <input
-              name="q"
-              defaultValue={filters.q}
-              placeholder="Name or alias"
-              style={{ width: "100%", marginTop: "0.35rem" }}
-            />
+            <input name="q" defaultValue={filters.q} placeholder="Name or alias" />
           </label>
 
           <label>
             Use case
-            <select name="useCase" defaultValue={filters.useCase} style={{ width: "100%", marginTop: "0.35rem" }}>
+            <select name="useCase" defaultValue={filters.useCase}>
               <option value="">All</option>
               {useCaseOptions.map((option) => (
                 <option key={option} value={option}>
@@ -64,11 +59,7 @@ export default async function PeptidesPage({ searchParams }: PageProps) {
 
           <label>
             Jurisdiction
-            <select
-              name="jurisdiction"
-              defaultValue={filters.jurisdiction}
-              style={{ width: "100%", marginTop: "0.35rem" }}
-            >
+            <select name="jurisdiction" defaultValue={filters.jurisdiction}>
               <option value="">All</option>
               {JURISDICTIONS.map((code) => (
                 <option key={code} value={code}>
@@ -80,7 +71,7 @@ export default async function PeptidesPage({ searchParams }: PageProps) {
 
           <label>
             Regulatory status
-            <select name="status" defaultValue={filters.status} style={{ width: "100%", marginTop: "0.35rem" }}>
+            <select name="status" defaultValue={filters.status}>
               <option value="">All</option>
               {REGULATORY_STATUSES.map((status) => (
                 <option key={status} value={status}>
@@ -92,11 +83,7 @@ export default async function PeptidesPage({ searchParams }: PageProps) {
 
           <label>
             Evidence grade
-            <select
-              name="evidence"
-              defaultValue={filters.evidence}
-              style={{ width: "100%", marginTop: "0.35rem" }}
-            >
+            <select name="evidence" defaultValue={filters.evidence}>
               <option value="">All</option>
               {EVIDENCE_GRADES.map((grade) => (
                 <option key={grade} value={grade}>
@@ -108,7 +95,7 @@ export default async function PeptidesPage({ searchParams }: PageProps) {
 
           <label>
             Route
-            <select name="route" defaultValue={filters.route} style={{ width: "100%", marginTop: "0.35rem" }}>
+            <select name="route" defaultValue={filters.route}>
               <option value="">All</option>
               {routeOptions.map((route) => (
                 <option key={route} value={route}>
@@ -118,7 +105,7 @@ export default async function PeptidesPage({ searchParams }: PageProps) {
             </select>
           </label>
 
-          <div style={{ gridColumn: "1 / -1", display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
+          <div className="hero-actions" style={{ gridColumn: "1 / -1" }}>
             <button type="submit" className="btn">
               Apply Filters
             </button>
@@ -131,10 +118,10 @@ export default async function PeptidesPage({ searchParams }: PageProps) {
 
       {filtered.map((peptide) => (
         <article key={peptide.slug} className="card">
-          <h2 style={{ marginTop: 0 }}>
+          <h2>
             <Link href={`/peptides/${peptide.slug}`}>{peptide.name}</Link>
           </h2>
-          <p className="muted" style={{ marginTop: 0 }}>
+          <p className="muted">
             Class: {peptide.className}
           </p>
           <div>
@@ -152,7 +139,7 @@ export default async function PeptidesPage({ searchParams }: PageProps) {
 
       {filtered.length === 0 ? (
         <section className="card">
-          <p style={{ margin: 0 }}>No peptides matched these filters.</p>
+          <p className="empty-state">No peptides matched these filters.</p>
         </section>
       ) : null}
     </div>

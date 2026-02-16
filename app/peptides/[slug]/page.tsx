@@ -26,9 +26,9 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
 
   return (
     <div className="grid">
-      <section className="card">
-        <h1 style={{ marginTop: 0 }}>{peptide.name}</h1>
-        <div style={{ marginBottom: "0.7rem" }}>
+      <section className="card hero">
+        <h1>{peptide.name}</h1>
+        <div className="meta-row">
           {Object.entries(peptide.statusByJurisdiction).map(([jurisdiction, status]) => (
             <span key={jurisdiction} className="chip">
               {jurisdiction}: {statusLabel(status)}
@@ -36,7 +36,7 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
           ))}
         </div>
         <p>{view === "consumer" ? peptide.intro : peptide.mechanism}</p>
-        <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.8rem" }}>
+        <div className="hero-actions">
           <Link className={`btn ${view === "consumer" ? "active" : ""}`} href={`/peptides/${peptide.slug}?view=consumer`}>
             Consumer View
           </Link>
@@ -47,7 +47,7 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
       </section>
 
       <section className="card">
-        <h2 style={{ marginTop: 0 }}>Features</h2>
+        <h2>Features</h2>
         <table>
           <tbody>
             {Object.entries(peptide.featureTable).map(([k, v]) => (
@@ -61,7 +61,7 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
       </section>
 
       <section className="card">
-        <h2 style={{ marginTop: 0 }}>Use Cases</h2>
+        <h2>Use Cases</h2>
         {peptide.useCases.map((useCase) => (
           <span key={useCase} className="chip">
             {useCase}
@@ -70,12 +70,12 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
       </section>
 
       <section className="card">
-        <h2 style={{ marginTop: 0 }}>Effectiveness</h2>
+        <h2>Effectiveness</h2>
         <p>{peptide.effectivenessSummary}</p>
       </section>
 
       <section className="card">
-        <h2 style={{ marginTop: 0 }}>Dosing</h2>
+        <h2>Dosing</h2>
         <table>
           <thead>
             <tr>
@@ -103,16 +103,16 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
       </section>
 
       <section className="card">
-        <h2 style={{ marginTop: 0 }}>Safety</h2>
+        <h2>Safety</h2>
         <p>{peptide.safety}</p>
       </section>
 
       <section className="card">
-        <h2 style={{ marginTop: 0 }}>Vendors</h2>
+        <h2>Vendors</h2>
         <div className="grid two">
           {peptide.vendors.map((vendor) => (
             <article className="card" key={vendor.slug}>
-              <h3 style={{ marginTop: 0 }}>{vendor.name}</h3>
+              <h3>{vendor.name}</h3>
               <p>
                 Rating:{" "}
                 <strong>
@@ -133,7 +133,7 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
       </section>
 
       <section className="card">
-        <h2 style={{ marginTop: 0 }}>Long Description</h2>
+        <h2>Long Description</h2>
         <p>{peptide.longDescription}</p>
       </section>
     </div>

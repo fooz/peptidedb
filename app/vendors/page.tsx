@@ -25,11 +25,11 @@ export default async function VendorsPage({ searchParams }: PageProps) {
   return (
     <div className="grid">
       <section className="card">
-        <h1 style={{ marginTop: 0 }}>Vendor Directory</h1>
+        <h1>Vendor Directory</h1>
         <p className="muted">
           Ratings are research-derived and non-user-submitted. Affiliate status does not affect score.
         </p>
-        <p className="muted" style={{ marginBottom: 0 }}>
+        <p className="muted">
           Showing <strong>{filtered.length}</strong> of <strong>{vendors.length}</strong> vendors.
         </p>
       </section>
@@ -38,12 +38,7 @@ export default async function VendorsPage({ searchParams }: PageProps) {
         <form action="/vendors" method="get" className="grid two">
           <label>
             Search
-            <input
-              name="q"
-              defaultValue={filters.q}
-              placeholder="Vendor name"
-              style={{ width: "100%", marginTop: "0.35rem" }}
-            />
+            <input name="q" defaultValue={filters.q} placeholder="Vendor name" />
           </label>
 
           <label>
@@ -51,7 +46,6 @@ export default async function VendorsPage({ searchParams }: PageProps) {
             <select
               name="minRating"
               defaultValue={filters.minRating === null ? "" : String(filters.minRating)}
-              style={{ width: "100%", marginTop: "0.35rem" }}
             >
               <option value="">Any</option>
               <option value="4">4.0+</option>
@@ -62,11 +56,7 @@ export default async function VendorsPage({ searchParams }: PageProps) {
 
           <label>
             Affiliate
-            <select
-              name="affiliate"
-              defaultValue={filters.affiliate}
-              style={{ width: "100%", marginTop: "0.35rem" }}
-            >
+            <select name="affiliate" defaultValue={filters.affiliate}>
               <option value="all">All</option>
               <option value="yes">Affiliate only</option>
               <option value="no">Non-affiliate only</option>
@@ -75,18 +65,14 @@ export default async function VendorsPage({ searchParams }: PageProps) {
 
           <label>
             Rating state
-            <select
-              name="ratingState"
-              defaultValue={filters.ratingState}
-              style={{ width: "100%", marginTop: "0.35rem" }}
-            >
+            <select name="ratingState" defaultValue={filters.ratingState}>
               <option value="all">All</option>
               <option value="rated">Rated only</option>
               <option value="unrated">No rating only</option>
             </select>
           </label>
 
-          <div style={{ gridColumn: "1 / -1", display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
+          <div className="hero-actions" style={{ gridColumn: "1 / -1" }}>
             <button type="submit" className="btn">
               Apply Filters
             </button>
@@ -100,7 +86,7 @@ export default async function VendorsPage({ searchParams }: PageProps) {
       <div className="grid two">
         {filtered.map((vendor) => (
           <article key={vendor.slug} className="card">
-            <h2 style={{ marginTop: 0 }}>{vendor.name}</h2>
+            <h2>{vendor.name}</h2>
             <p>
               Rating: <strong>{renderStars(vendor.rating)}</strong>
             </p>
@@ -115,7 +101,7 @@ export default async function VendorsPage({ searchParams }: PageProps) {
 
       {filtered.length === 0 ? (
         <section className="card">
-          <p style={{ margin: 0 }}>No vendors matched these filters.</p>
+          <p className="empty-state">No vendors matched these filters.</p>
         </section>
       ) : null}
     </div>
