@@ -20,13 +20,18 @@ function firstParam(value: SearchValue): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
 
-export default async function AdminPage({ searchParams }: { searchParams?: SearchParams }) {
+type PageProps = {
+  searchParams: Promise<SearchParams | undefined>;
+};
+
+export default async function AdminPage({ searchParams }: PageProps) {
   await requireAdminAuth();
 
-  const notice = firstParam(searchParams?.notice);
-  const kind = firstParam(searchParams?.kind);
-  const editPeptide = firstParam(searchParams?.editPeptide);
-  const editVendor = firstParam(searchParams?.editVendor);
+  const resolvedSearchParams = await searchParams;
+  const notice = firstParam(resolvedSearchParams?.notice);
+  const kind = firstParam(resolvedSearchParams?.kind);
+  const editPeptide = firstParam(resolvedSearchParams?.editPeptide);
+  const editVendor = firstParam(resolvedSearchParams?.editVendor);
   const data = await getAdminDashboardData(editPeptide, editVendor);
 
   const selectedPeptide = data.selectedPeptide;

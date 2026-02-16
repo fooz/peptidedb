@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { getPeptideDetail } from "@/lib/repository";
 
 type PageProps = {
-  params: { slug: string };
-  searchParams?: { view?: "consumer" | "clinical" };
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ view?: "consumer" | "clinical" } | undefined>;
 };
 
 function statusLabel(value: string): string {
@@ -15,8 +15,9 @@ function statusLabel(value: string): string {
 }
 
 export default async function PeptideDetailPage({ params, searchParams }: PageProps) {
-  const { slug } = params;
-  const view = searchParams?.view === "clinical" ? "clinical" : "consumer";
+  const { slug } = await params;
+  const resolvedSearchParams = await searchParams;
+  const view = resolvedSearchParams?.view === "clinical" ? "clinical" : "consumer";
   const peptide = await getPeptideDetail(slug);
 
   if (!peptide) {

@@ -12,8 +12,13 @@ function renderStars(value: number | null): string {
   return `${value.toFixed(1)} stars`;
 }
 
-export default async function VendorsPage({ searchParams }: { searchParams?: SearchParams }) {
-  const filters = parseVendorFilters(searchParams);
+type PageProps = {
+  searchParams: Promise<SearchParams | undefined>;
+};
+
+export default async function VendorsPage({ searchParams }: PageProps) {
+  const resolvedSearchParams = await searchParams;
+  const filters = parseVendorFilters(resolvedSearchParams);
   const vendors = await listVendors();
   const filtered = filterVendors(vendors, filters);
 

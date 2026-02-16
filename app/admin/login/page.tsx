@@ -9,12 +9,17 @@ function getFirst(value: SearchValue): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
 
-export default async function AdminLoginPage({ searchParams }: { searchParams?: SearchParams }) {
+type PageProps = {
+  searchParams: Promise<SearchParams | undefined>;
+};
+
+export default async function AdminLoginPage({ searchParams }: PageProps) {
   if (await isAdminAuthenticated()) {
     redirect("/admin");
   }
 
-  const error = getFirst(searchParams?.error);
+  const resolvedSearchParams = await searchParams;
+  const error = getFirst(resolvedSearchParams?.error);
 
   return (
     <div className="grid" style={{ maxWidth: 560, margin: "0 auto" }}>

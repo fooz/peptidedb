@@ -12,8 +12,13 @@ function uniqueSorted(values: string[]): string[] {
   );
 }
 
-export default async function PeptidesPage({ searchParams }: { searchParams?: SearchParams }) {
-  const filters = parsePeptideFilters(searchParams);
+type PageProps = {
+  searchParams: Promise<SearchParams | undefined>;
+};
+
+export default async function PeptidesPage({ searchParams }: PageProps) {
+  const resolvedSearchParams = await searchParams;
+  const filters = parsePeptideFilters(resolvedSearchParams);
   const peptides = await listPeptides();
   const filtered = filterPeptides(peptides, filters);
 
