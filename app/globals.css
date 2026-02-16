@@ -150,6 +150,57 @@ a:hover {
   flex-wrap: wrap;
 }
 
+.ingest-controls {
+  display: grid;
+  gap: 0.75rem;
+  width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.ingest-card {
+  border: 1px solid var(--line);
+  background: #fbfdff;
+  border-radius: 12px;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.ingest-card h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.ingest-status {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+.ingest-status.active {
+  color: var(--brand-strong);
+  font-weight: 700;
+}
+
+.inline-spinner {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  animation: spin 0.85s linear infinite;
+}
+
+.btn:not(.primary) .inline-spinner {
+  border-color: rgba(15, 35, 57, 0.2);
+  border-top-color: var(--ink);
+}
+
+.btn:disabled {
+  opacity: 0.78;
+  cursor: wait;
+}
+
 .meta-row {
   display: flex;
   gap: 0.6rem;
@@ -410,6 +461,15 @@ td {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 

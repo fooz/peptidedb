@@ -19,6 +19,7 @@ Consumer-first peptide reference database with embedded clinical sections, evide
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
+   - `NCBI_API_KEY` (optional, recommended for higher PubMed API limits)
    - `ADMIN_USERNAME` (default: `admin`)
    - `ADMIN_PASSWORD` (required for `/admin` login)
 4. Start:
@@ -31,7 +32,7 @@ Consumer-first peptide reference database with embedded clinical sections, evide
 2. Run `db/schema.sql`.
 3. Run `db/bootstrap.sql`.
 4. Confirm storage bucket exists: `vendor-docs` (private).
-5. If you already ran bootstrap before this commit, re-run `db/bootstrap.sql` once to apply new `is_published` columns and constraints.
+5. If you already ran bootstrap before this commit, re-run `db/bootstrap.sql` once to apply new columns (`is_published`, `last_live_refresh_at`) and constraints.
 
 ## Vercel setup (non-technical)
 1. In Vercel project settings, open `Environment Variables`.
@@ -39,6 +40,7 @@ Consumer-first peptide reference database with embedded clinical sections, evide
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
+   - `NCBI_API_KEY` (optional)
    - `ADMIN_USERNAME`
    - `ADMIN_PASSWORD`
 3. Redeploy.
@@ -57,6 +59,7 @@ Consumer-first peptide reference database with embedded clinical sections, evide
 - Password-protected admin dashboard at `/admin`
 - Citation claim workflow in admin (requires source URL + publication date)
 - One-click expanded dataset ingest button in `/admin`
+- One-click live evidence refresh button in `/admin` (PubMed + ClinicalTrials)
 - Evidence and references section on peptide detail pages
 - Supabase-backed reads with fallback data if tables are empty
 - Health endpoint: `/api/health`

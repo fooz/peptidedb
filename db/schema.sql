@@ -18,6 +18,7 @@ CREATE TABLE peptides (
   sequence TEXT,
   peptide_class TEXT,
   is_published BOOLEAN NOT NULL DEFAULT FALSE,
+  last_live_refresh_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

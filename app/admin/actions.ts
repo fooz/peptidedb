@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { assertAdminAuth } from "@/lib/admin-auth";
 import { ingestExpandedPeptideDataset } from "@/lib/expanded-dataset-ingest";
+import { refreshLiveEvidenceClaims } from "@/lib/live-evidence-refresh";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 
 function clean(value: FormDataEntryValue | null): string {
@@ -403,6 +404,21 @@ export async function ingestExpandedDatasetAction() {
   } catch (error) {
     rethrowIfRedirectError(error);
     const message = error instanceof Error ? error.message : "Failed to run expanded ingest.";
+    redirectNotice(message, "error");
+  }
+}
+
+export async function refreshLiveEvidenceAction() {
+  await assertAdminAuth();
+  try {
+    const supabase = requireSupabaseAdmin();
+    const result = await refreshLiveEvidenceClaims(supabase, { batchSize: 12, sourcesPerPeptide: 2 });
+    redirectNotice(
+      `Live refresh complete: ${result.peptidesScanned} peptides scanned, ${result.claimsUpserted} claims updated, ${result.peptidesWithNoHits} no-hits, ${result.failures} failed.`
+    );
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    const message = error instanceof Error ? error.message : "Failed to refresh live evidence.";
     redirectNotice(message, "error");
   }
 }

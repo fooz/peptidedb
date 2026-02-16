@@ -6,12 +6,14 @@ import {
   addUseCaseAction,
   deleteCitationClaimAction,
   ingestExpandedDatasetAction,
+  refreshLiveEvidenceAction,
   upsertPeptideAction,
   upsertSafetyAction,
   upsertVendorAction,
   upsertVendorListingAction,
   upsertVendorRatingAction
 } from "@/app/admin/actions";
+import { IngestControls } from "@/app/admin/ingest-controls";
 import { EVIDENCE_GRADES, JURISDICTIONS, REGULATORY_STATUSES } from "@/lib/constants";
 import { requireAdminAuth } from "@/lib/admin-auth";
 import { getAdminDashboardData } from "@/lib/admin-repository";
@@ -64,11 +66,12 @@ export default async function AdminPage({ searchParams }: PageProps) {
           <span className="kpi-pill">{data.vendors.length} vendors</span>
           <span className="kpi-pill">{data.supabaseConfigured ? "Supabase connected" : "Supabase missing config"}</span>
         </div>
-        <form action={ingestExpandedDatasetAction} className="hero-actions">
-          <button className="btn primary" type="submit">
-            Ingest Expanded Peptide Dataset
-          </button>
-        </form>
+        <div className="hero-actions">
+          <IngestControls
+            ingestExpandedDatasetAction={ingestExpandedDatasetAction}
+            refreshLiveEvidenceAction={refreshLiveEvidenceAction}
+          />
+        </div>
         {notice ? <p className={`notice ${kind === "error" ? "error" : "success"}`}>{notice}</p> : null}
       </section>
 
