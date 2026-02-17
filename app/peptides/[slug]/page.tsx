@@ -64,6 +64,9 @@ export default async function PeptideDetailPage({ params }: PageProps) {
     notFound();
   }
 
+  const communityClaims = peptide.evidenceClaims.filter((claim) => claim.section.startsWith("Community Signals"));
+  const nonCommunityClaims = peptide.evidenceClaims.filter((claim) => !claim.section.startsWith("Community Signals"));
+
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "MedicalWebPage",
@@ -235,8 +238,40 @@ export default async function PeptideDetailPage({ params }: PageProps) {
       </section>
 
       <section className="card">
+        <h2>Community Signals</h2>
+        {communityClaims.length === 0 ? (
+          <p className="empty-state">No social/community signals are available for this peptide yet.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Source</th>
+                <th>Summary</th>
+                <th>Evidence Grade</th>
+                <th>Link</th>
+              </tr>
+            </thead>
+            <tbody>
+              {communityClaims.map((claim, index) => (
+                <tr key={`community-${claim.sourceUrl}-${index}`}>
+                  <td>{claim.section}</td>
+                  <td>{claim.claimText}</td>
+                  <td>{claim.evidenceGrade ?? "N/A"}</td>
+                  <td>
+                    <a href={claim.sourceUrl} target="_blank" rel="noreferrer">
+                      Open source
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <section className="card">
         <h2>Evidence And References</h2>
-        {peptide.evidenceClaims.length === 0 ? (
+        {nonCommunityClaims.length === 0 ? (
           <p className="empty-state">No curated citations have been added for this peptide yet.</p>
         ) : (
           <table>
@@ -250,7 +285,7 @@ export default async function PeptideDetailPage({ params }: PageProps) {
               </tr>
             </thead>
             <tbody>
-              {peptide.evidenceClaims.map((claim, index) => (
+              {nonCommunityClaims.map((claim, index) => (
                 <tr key={`${claim.sourceUrl}-${index}`}>
                   <td>{claim.section}</td>
                   <td>{claim.claimText}</td>

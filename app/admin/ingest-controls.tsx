@@ -8,6 +8,7 @@ type IngestControlsProps = {
   ingestClinicalTrialsCatalogAction: () => Promise<void>;
   ingestVendorWebsiteCatalogAction: () => Promise<void>;
   enrichPeptideContentAction: () => Promise<void>;
+  ingestSocialUgcAction: () => Promise<void>;
 };
 
 type IngestCardProps = {
@@ -70,7 +71,8 @@ export function IngestControls({
   refreshLiveEvidenceAction,
   ingestClinicalTrialsCatalogAction,
   ingestVendorWebsiteCatalogAction,
-  enrichPeptideContentAction
+  enrichPeptideContentAction,
+  ingestSocialUgcAction
 }: IngestControlsProps) {
   return (
     <div className="ingest-controls">
@@ -109,6 +111,13 @@ export function IngestControls({
         description="Pulls openFDA, PubChem, ChEMBL, ClinicalTrials, and PubMed data to replace vague peptide content."
         idleLabel="Enrich 40 Peptides (Per Run)"
         pendingLabel="Enriching Content..."
+      />
+      <IngestCard
+        action={ingestSocialUgcAction}
+        title="Social & Community Sources"
+        description="Ingests Reddit and Hacker News discussions for peptides and vendors, stores review quotes, and updates vendor ratings with sentiment analysis."
+        idleLabel="Ingest Social Signals (Peptides + Vendors)"
+        pendingLabel="Ingesting Social Signals..."
       />
     </div>
   );

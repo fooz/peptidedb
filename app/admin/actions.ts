@@ -7,6 +7,7 @@ import { ingestClinicalTrialsCatalog } from "@/lib/clinicaltrials-catalog-ingest
 import { ingestExpandedPeptideDataset } from "@/lib/expanded-dataset-ingest";
 import { refreshLiveEvidenceClaims } from "@/lib/live-evidence-refresh";
 import { enrichPeptideContent } from "@/lib/peptide-content-enrichment";
+import { ingestSocialUgcSignals } from "@/lib/social-ugc-ingest";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 import { ingestVendorWebsiteCatalog } from "@/lib/vendor-website-ingest";
 
@@ -462,6 +463,28 @@ export async function ingestVendorWebsiteCatalogAction() {
   } catch (error) {
     rethrowIfRedirectError(error);
     const message = error instanceof Error ? error.message : "Failed to ingest vendor websites.";
+    redirectNotice(message, "error");
+  }
+}
+
+export async function ingestSocialUgcAction() {
+  await assertAdminAuth();
+  try {
+    const supabase = requireSupabaseAdmin();
+    const result = await ingestSocialUgcSignals(supabase, {
+      onlyPublished: true,
+      peptideLimit: 40,
+      vendorLimit: 25,
+      delayMs: 90,
+      maxTermsPerEntity: 2,
+      maxQuotesPerVendor: 6
+    });
+    redirectNotice(
+      `Social ingest complete: ${result.peptidesUpdated}/${result.peptidesScanned} peptides and ${result.vendorsUpdated}/${result.vendorsScanned} vendors updated; ${result.vendorReviewsInserted} vendor review quotes captured; ${result.vendorRatingsUpdated} vendor ratings recalculated.`
+    );
+  } catch (error) {
+    rethrowIfRedirectError(error);
+    const message = error instanceof Error ? error.message : "Failed to ingest social community signals.";
     redirectNotice(message, "error");
   }
 }

@@ -46,12 +46,28 @@ export interface VendorPeptideListing {
   className: string;
 }
 
+export interface VendorReviewQuote {
+  source: string;
+  community: string;
+  quote: string;
+  sourceUrl: string;
+  createdAt: string;
+  author: string | null;
+  sentimentLabel: "positive" | "mixed" | "negative" | "neutral";
+  sentimentScore: number | null;
+  upvotes: number | null;
+  commentCount: number | null;
+}
+
 export interface VendorDetail extends VendorCard {
   websiteUrl: string;
   description: string;
   features: string[];
   trustSignals: string[];
   availablePeptides: VendorPeptideListing[];
+  reviews: VendorReviewQuote[];
+  socialSentimentScore: number | null;
+  socialSentimentLabel: "positive" | "mixed" | "negative" | "neutral" | null;
 }
 
 export interface EvidenceClaim {

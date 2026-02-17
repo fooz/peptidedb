@@ -403,16 +403,29 @@ function stripHtml(html: string): string {
     .trim();
 }
 
-function computeVendorScore(trustSignals: string[], peptidesDetected: number): { rating: number | null; confidence: number | null } {
-  if (trustSignals.length === 0) {
+export function computeVendorScore(
+  trustSignals: string[],
+  peptidesDetected: number,
+  social?: { reviewCount: number; averageSentiment: number | null; sourceCount?: number }
+): { rating: number | null; confidence: number | null } {
+  const reviewCount = Math.max(0, Number(social?.reviewCount ?? 0));
+  const averageSentiment =
+    social?.averageSentiment !== null && social?.averageSentiment !== undefined ? Number(social.averageSentiment) : null;
+  const sourceCount = Math.max(0, Number(social?.sourceCount ?? 0));
+
+  if (trustSignals.length === 0 && reviewCount === 0) {
     return { rating: null, confidence: null };
   }
 
-  const points = trustSignals.reduce((sum, signal) => sum + (TRUST_SIGNAL_WEIGHT[signal] ?? 0.3), 0);
+  const trustPoints = trustSignals.reduce((sum, signal) => sum + (TRUST_SIGNAL_WEIGHT[signal] ?? 0.3), 0);
   const listingScore = Math.min(1.2, peptidesDetected * 0.06);
-  const rawRating = 2.2 + points * 0.45 + listingScore;
+  const socialSentimentScore = averageSentiment === null ? 0 : Math.max(-0.7, Math.min(0.7, averageSentiment * 0.7));
+  const socialVolumeScore = Math.min(0.45, Math.log10(reviewCount + 1) * 0.22);
+  const socialSourceDiversityScore = Math.min(0.16, sourceCount * 0.06);
+
+  const rawRating = 2.2 + trustPoints * 0.45 + listingScore + socialSentimentScore + socialVolumeScore + socialSourceDiversityScore;
   const rating = Math.max(0, Math.min(5, Number(rawRating.toFixed(1))));
-  const rawConfidence = 0.42 + trustSignals.length * 0.06 + Math.min(0.25, peptidesDetected * 0.01);
+  const rawConfidence = 0.42 + trustSignals.length * 0.06 + Math.min(0.25, peptidesDetected * 0.01) + Math.min(0.2, reviewCount * 0.01);
   const confidence = Number(Math.max(0, Math.min(0.98, rawConfidence)).toFixed(2));
 
   return { rating, confidence };
@@ -673,7 +686,11 @@ export function getVendorSeedMetadata(slug: string): {
 }
 
 async function upsertVendorVerifications(supabase: SupabaseClient, vendorId: number, trustSignals: string[]) {
-  await supabase.from("vendor_verifications").delete().eq("vendor_id", vendorId);
+  await supabase
+    .from("vendor_verifications")
+    .delete()
+    .eq("vendor_id", vendorId)
+    .eq("value", "declared_by_vendor_profile");
   const rows = trustSignals.map((signal) => ({
     vendor_id: vendorId,
     verification_type: signal,

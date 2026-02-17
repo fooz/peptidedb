@@ -12,7 +12,8 @@ import type {
   SafetyProfile,
   VendorCard,
   VendorDetail,
-  VendorPeptideListing
+  VendorPeptideListing,
+  VendorReviewQuote
 } from "@/lib/types";
 
 const JURISDICTION_CODES: JurisdictionCode[] = ["US", "EU", "UK", "CA", "AU"];
@@ -87,6 +88,73 @@ function firstRelation(value: unknown): Record<string, unknown> | null {
 
 function uniqueStrings(values: Array<string | null | undefined>): string[] {
   return Array.from(new Set(values.filter((value): value is string => Boolean(value))));
+}
+
+function sentimentLabelFromScore(
+  score: number | null
+): "positive" | "mixed" | "negative" | "neutral" | null {
+  if (score === null) {
+    return null;
+  }
+  if (score >= 0.24) {
+    return "positive";
+  }
+  if (score <= -0.24) {
+    return "negative";
+  }
+  if (Math.abs(score) < 0.1) {
+    return "neutral";
+  }
+  return "mixed";
+}
+
+function parseVendorReviewQuote(row: Record<string, unknown>): VendorReviewQuote | null {
+  const verificationType = asString(row.verification_type);
+  if (!verificationType || !verificationType.startsWith("community_review_")) {
+    return null;
+  }
+
+  const rawValue = asString(row.value);
+  if (!rawValue) {
+    return null;
+  }
+
+  let parsed: Record<string, unknown> | null = null;
+  try {
+    const json = JSON.parse(rawValue);
+    parsed = asRecord(json);
+  } catch {
+    parsed = null;
+  }
+
+  const source = asString(parsed?.source) ?? verificationType.replace("community_review_", "").replace(/_/g, " ");
+  const community = asString(parsed?.community) ?? source;
+  const quote = asString(parsed?.quote);
+  const sourceUrl = asString(parsed?.sourceUrl);
+  const createdAt = asString(parsed?.createdAt);
+  if (!quote || !sourceUrl || !createdAt) {
+    return null;
+  }
+
+  const sentimentScore = asNumber(parsed?.sentimentScore);
+  const explicitLabel = asString(parsed?.sentimentLabel);
+  const sentimentLabel =
+    explicitLabel === "positive" || explicitLabel === "mixed" || explicitLabel === "negative" || explicitLabel === "neutral"
+      ? explicitLabel
+      : (sentimentLabelFromScore(sentimentScore) ?? "neutral");
+
+  return {
+    source,
+    community,
+    quote,
+    sourceUrl,
+    createdAt,
+    author: asString(parsed?.author),
+    sentimentLabel,
+    sentimentScore,
+    upvotes: asNumber(parsed?.upvotes),
+    commentCount: asNumber(parsed?.commentCount)
+  } satisfies VendorReviewQuote;
 }
 
 function collectStatusMap(statusRows: unknown[]): Record<JurisdictionCode, RegulatoryStatus> {
@@ -639,14 +707,36 @@ export async function getVendorDetail(slug: string): Promise<VendorDetail | null
     .map((tag) => asString(tag))
     .filter((tag): tag is string => Boolean(tag));
 
+  const verificationRecords = asArray(verificationRows)
+    .map((row) => asRecord(row))
+    .filter((row): row is Record<string, unknown> => row !== null);
+
+  const reviews = verificationRecords
+    .map((row) => parseVendorReviewQuote(row))
+    .filter((item): item is VendorReviewQuote => item !== null)
+    .sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1));
+
+  const scoredReviews = reviews.filter((review) => review.sentimentScore !== null);
+  const socialSentimentScore =
+    scoredReviews.length > 0
+      ? Number(
+          (
+            scoredReviews.reduce((sum, review) => sum + (review.sentimentScore ?? 0), 0) /
+            scoredReviews.length
+          ).toFixed(2)
+        )
+      : null;
+  const socialSentimentLabel = sentimentLabelFromScore(socialSentimentScore);
+
   const trustSignals = uniqueStrings([
     ...asArray(profile?.trust_signals).map((signal) => asString(signal)).filter((signal): signal is string => Boolean(signal)),
     ...(seedMetadata?.trustSignals ?? []),
     ...ratingTags,
-    ...asArray(verificationRows)
-      .map((row) => asRecord(row))
-      .filter((row): row is Record<string, unknown> => row !== null)
+    ...verificationRecords
       .map((row) => asString(row.verification_type))
+      .filter((verificationType): verificationType is string => Boolean(verificationType))
+      .filter((verificationType) => !verificationType.startsWith("community_review_"))
+      .map((verificationType) => verificationType)
       .filter((signal): signal is string => Boolean(signal))
   ]);
 
@@ -689,6 +779,9 @@ export async function getVendorDetail(slug: string): Promise<VendorDetail | null
     rating: asNumber(rating?.rating),
     confidence: asNumber(rating?.confidence),
     reasonTags: ratingTags.length > 0 ? ratingTags : trustSignals,
-    isAffiliate: false
+    isAffiliate: false,
+    reviews,
+    socialSentimentScore,
+    socialSentimentLabel
   };
 }

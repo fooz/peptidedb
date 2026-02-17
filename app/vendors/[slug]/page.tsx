@@ -10,6 +10,14 @@ type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
+function formatDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const vendor = await getVendorDetail(slug);
@@ -61,6 +69,20 @@ export default async function VendorDetailPage({ params }: PageProps) {
               worstRating: "0"
             }
           }
+        : {}),
+      ...(vendor.reviews.length > 0
+        ? {
+            review: vendor.reviews.slice(0, 6).map((review) => ({
+              "@type": "Review",
+              reviewBody: review.quote,
+              datePublished: review.createdAt,
+              author: {
+                "@type": "Person",
+                name: review.author ?? "Community user"
+              },
+              isBasedOn: review.sourceUrl
+            }))
+          }
         : {})
     }
   };
@@ -78,6 +100,15 @@ export default async function VendorDetailPage({ params }: PageProps) {
         <p className="muted">
           Confidence: {vendor.confidence === null ? "N/A" : `${Math.round(vendor.confidence * 100)}%`}
         </p>
+        {vendor.socialSentimentLabel ? (
+          <p className="muted">
+            Community sentiment:{" "}
+            <strong>
+              {vendor.socialSentimentLabel}
+              {vendor.socialSentimentScore !== null ? ` (${vendor.socialSentimentScore.toFixed(2)})` : ""}
+            </strong>
+          </p>
+        ) : null}
         {vendor.websiteUrl ? (
           <p>
             <a href={vendor.websiteUrl} target="_blank" rel="noreferrer">
@@ -116,6 +147,33 @@ export default async function VendorDetailPage({ params }: PageProps) {
               >
                 {labelFromSnake(signal)}
               </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="card">
+        <h2>Community Review Quotes</h2>
+        {vendor.reviews.length === 0 ? (
+          <p className="empty-state">No community review quotes have been ingested for this vendor yet.</p>
+        ) : (
+          <div className="grid">
+            {vendor.reviews.slice(0, 12).map((review, index) => (
+              <article key={`${review.sourceUrl}-${index}`} className="card">
+                <p>
+                  <strong>{review.community}</strong> · {review.sentimentLabel}
+                  {review.sentimentScore !== null ? ` (${review.sentimentScore.toFixed(2)})` : ""}
+                </p>
+                <p>"{review.quote}"</p>
+                <p className="muted">
+                  {review.author ?? "Community user"} · {formatDate(review.createdAt)}
+                </p>
+                <p>
+                  <a href={review.sourceUrl} target="_blank" rel="noreferrer">
+                    View source
+                  </a>
+                </p>
+              </article>
             ))}
           </div>
         )}

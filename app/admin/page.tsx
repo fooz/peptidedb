@@ -7,6 +7,7 @@ import {
   addUseCaseAction,
   deleteCitationClaimAction,
   enrichPeptideContentAction,
+  ingestSocialUgcAction,
   ingestClinicalTrialsCatalogAction,
   ingestExpandedDatasetAction,
   ingestVendorWebsiteCatalogAction,
@@ -85,6 +86,7 @@ export default async function AdminPage({ searchParams }: PageProps) {
             ingestClinicalTrialsCatalogAction={ingestClinicalTrialsCatalogAction}
             ingestVendorWebsiteCatalogAction={ingestVendorWebsiteCatalogAction}
             enrichPeptideContentAction={enrichPeptideContentAction}
+            ingestSocialUgcAction={ingestSocialUgcAction}
           />
         </div>
         {notice ? <p className={`notice ${kind === "error" ? "error" : "success"}`}>{notice}</p> : null}
