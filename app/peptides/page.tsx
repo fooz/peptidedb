@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Breadcrumbs } from "@/app/components/breadcrumbs";
 import { EVIDENCE_GRADES, JURISDICTIONS, REGULATORY_STATUSES, labelFromSnake } from "@/lib/constants";
 import { filterPeptides, parsePeptideFilters } from "@/lib/filtering";
 import { listPeptides } from "@/lib/repository";
@@ -12,6 +13,37 @@ function uniqueSorted(values: string[]): string[] {
   return Array.from(new Set(values.filter((value) => value.trim().length > 0))).sort((a, b) =>
     a.localeCompare(b)
   );
+}
+
+function buildCurrentFilterPath(filters: {
+  q: string;
+  useCase: string;
+  jurisdiction: string;
+  status: string;
+  evidence: string;
+  route: string;
+}): string {
+  const params = new URLSearchParams();
+  if (filters.q) {
+    params.set("q", filters.q);
+  }
+  if (filters.useCase) {
+    params.set("useCase", filters.useCase);
+  }
+  if (filters.jurisdiction) {
+    params.set("jurisdiction", filters.jurisdiction);
+  }
+  if (filters.status) {
+    params.set("status", filters.status);
+  }
+  if (filters.evidence) {
+    params.set("evidence", filters.evidence);
+  }
+  if (filters.route) {
+    params.set("route", filters.route);
+  }
+  const query = params.toString();
+  return query ? `/peptides?${query}` : "/peptides";
 }
 
 type PageProps = {
@@ -32,6 +64,7 @@ export default async function PeptidesPage({ searchParams }: PageProps) {
   const filters = parsePeptideFilters(resolvedSearchParams);
   const peptides = await listPeptides();
   const filtered = filterPeptides(peptides, filters);
+  const currentFilterPath = buildCurrentFilterPath(filters);
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
@@ -56,6 +89,7 @@ export default async function PeptidesPage({ searchParams }: PageProps) {
   return (
     <div className="grid" itemScope itemType="https://schema.org/CollectionPage">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(structuredData) }} />
+      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Peptides" }]} />
       <section className="card">
         <h1>Peptide Directory</h1>
         <p className="muted">
@@ -148,7 +182,7 @@ export default async function PeptidesPage({ searchParams }: PageProps) {
       {filtered.map((peptide) => (
         <article key={peptide.slug} className="card" itemScope itemType="https://schema.org/MedicalEntity">
           <h2>
-            <Link href={`/peptides/${peptide.slug}`} itemProp="url">
+            <Link href={`/peptides/${peptide.slug}?from=${encodeURIComponent(currentFilterPath)}`} itemProp="url">
               <span itemProp="name">{peptide.name}</span>
             </Link>
           </h2>

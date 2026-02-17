@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Breadcrumbs } from "@/app/components/breadcrumbs";
 import { StarRating } from "@/app/components/star-rating";
 import { labelFromSnake } from "@/lib/constants";
 import { getVendorDetail } from "@/lib/repository";
@@ -8,7 +9,11 @@ import { absoluteUrl, safeJsonLd } from "@/lib/seo";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined> | undefined>;
 };
+
+type SearchValue = string | string[] | undefined;
+type SearchParams = Record<string, SearchValue>;
 
 function formatDate(value: string): string {
   const date = new Date(value);
@@ -16,6 +21,39 @@ function formatDate(value: string): string {
     return value;
   }
   return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+}
+
+function asSingle(value: SearchValue): string {
+  if (Array.isArray(value)) {
+    return value[0]?.trim() ?? "";
+  }
+  return value?.trim() ?? "";
+}
+
+function sanitizeFromPath(value: string): string | null {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return null;
+  }
+  if (value.includes("\n") || value.includes("\r")) {
+    return null;
+  }
+  return value;
+}
+
+function breadcrumbLabelForFromPath(fromPath: string | null): string {
+  if (!fromPath) {
+    return "Vendors";
+  }
+  if (fromPath.startsWith("/vendors?")) {
+    return "Search Results";
+  }
+  if (fromPath.startsWith("/vendors")) {
+    return "Vendors";
+  }
+  if (fromPath.startsWith("/peptides")) {
+    return "Peptides";
+  }
+  return "Browse";
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -43,8 +81,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function VendorDetailPage({ params }: PageProps) {
+export default async function VendorDetailPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
+  const resolvedSearchParams = (await searchParams) as SearchParams | undefined;
+  const fromPath = sanitizeFromPath(asSingle(resolvedSearchParams?.from));
+  const backPath = fromPath ?? "/vendors";
+  const backLabel = breadcrumbLabelForFromPath(fromPath);
+
   const vendor = await getVendorDetail(slug);
   if (!vendor) {
     notFound();
@@ -90,6 +133,7 @@ export default async function VendorDetailPage({ params }: PageProps) {
   return (
     <div className="grid">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(structuredData) }} />
+      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: backLabel, href: backPath }, { label: vendor.name }]} />
 
       <section className="card hero">
         <h1>{vendor.name}</h1>
@@ -188,7 +232,9 @@ export default async function VendorDetailPage({ params }: PageProps) {
             {vendor.availablePeptides.map((peptide) => (
               <article key={peptide.slug} className="card">
                 <h3>
-                  <Link href={`/peptides/${peptide.slug}`}>{peptide.name}</Link>
+                  <Link href={`/peptides/${peptide.slug}?from=${encodeURIComponent(`/vendors/${vendor.slug}`)}`}>
+                    {peptide.name}
+                  </Link>
                 </h3>
                 <p className="muted">{peptide.className}</p>
               </article>

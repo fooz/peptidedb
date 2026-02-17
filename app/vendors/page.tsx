@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Breadcrumbs } from "@/app/components/breadcrumbs";
 import { StarRating } from "@/app/components/star-rating";
 import { labelFromSnake } from "@/lib/constants";
 import { filterVendors, parseVendorFilters } from "@/lib/filtering";
@@ -57,6 +58,7 @@ export default async function VendorsPage({ searchParams }: PageProps) {
   const filters = parseVendorFilters(resolvedSearchParams);
   const vendors = await listVendors();
   const filtered = filterVendors(vendors, filters);
+  const currentFilterPath = buildVendorFilterHref(filters);
   const reasonTagOptions = uniqueSorted(vendors.flatMap((vendor) => vendor.reasonTags));
   const structuredData = {
     "@context": "https://schema.org",
@@ -92,6 +94,7 @@ export default async function VendorsPage({ searchParams }: PageProps) {
   return (
     <div className="grid" itemScope itemType="https://schema.org/CollectionPage">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(structuredData) }} />
+      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Vendors" }]} />
       <section className="card">
         <h1>Vendor Directory</h1>
         <p className="muted">Ratings are research-derived and non-user-submitted.</p>
@@ -169,7 +172,7 @@ export default async function VendorsPage({ searchParams }: PageProps) {
         {filtered.map((vendor) => (
           <article key={vendor.slug} className="card" itemScope itemType="https://schema.org/Organization">
             <h2 itemProp="name">
-              <Link href={`/vendors/${vendor.slug}`} itemProp="url">
+              <Link href={`/vendors/${vendor.slug}?from=${encodeURIComponent(currentFilterPath)}`} itemProp="url">
                 {vendor.name}
               </Link>
             </h2>

@@ -1,13 +1,27 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Breadcrumbs } from "@/app/components/breadcrumbs";
 import { StarRating } from "@/app/components/star-rating";
 import { labelFromSnake } from "@/lib/constants";
-import { getPeptideDetail } from "@/lib/repository";
+import { getPeptideDetail, listPeptides } from "@/lib/repository";
 import { absoluteUrl, safeJsonLd } from "@/lib/seo";
+import type { PeptideSummary } from "@/lib/types";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined> | undefined>;
+};
+
+type SearchValue = string | string[] | undefined;
+type SearchParams = Record<string, SearchValue>;
+
+const EVIDENCE_RANK: Record<PeptideSummary["evidenceGrade"], number> = {
+  A: 0,
+  B: 1,
+  C: 2,
+  D: 3,
+  I: 4
 };
 
 function statusLabel(value: string): string {
@@ -29,6 +43,49 @@ function formatDate(value: string): string {
     return value;
   }
   return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+}
+
+function asSingle(value: SearchValue): string {
+  if (Array.isArray(value)) {
+    return value[0]?.trim() ?? "";
+  }
+  return value?.trim() ?? "";
+}
+
+function sanitizeFromPath(value: string): string | null {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return null;
+  }
+  if (value.includes("\n") || value.includes("\r")) {
+    return null;
+  }
+  return value;
+}
+
+function breadcrumbLabelForFromPath(fromPath: string | null): string {
+  if (!fromPath) {
+    return "Peptides";
+  }
+  if (fromPath.startsWith("/peptides?")) {
+    return "Search Results";
+  }
+  if (fromPath.startsWith("/peptides")) {
+    return "Peptides";
+  }
+  if (fromPath.startsWith("/vendors")) {
+    return "Vendors";
+  }
+  return "Browse";
+}
+
+function sortByEvidenceThenName(peptides: PeptideSummary[]): PeptideSummary[] {
+  return [...peptides].sort((a, b) => {
+    const gradeRank = EVIDENCE_RANK[a.evidenceGrade] - EVIDENCE_RANK[b.evidenceGrade];
+    if (gradeRank !== 0) {
+      return gradeRank;
+    }
+    return a.name.localeCompare(b.name);
+  });
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -56,13 +113,31 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function PeptideDetailPage({ params }: PageProps) {
+export default async function PeptideDetailPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
-  const peptide = await getPeptideDetail(slug);
+  const resolvedSearchParams = (await searchParams) as SearchParams | undefined;
+  const fromPath = sanitizeFromPath(asSingle(resolvedSearchParams?.from));
+  const backPath = fromPath ?? "/peptides";
+  const backLabel = breadcrumbLabelForFromPath(fromPath);
+
+  const [peptide, allPeptides] = await Promise.all([getPeptideDetail(slug), listPeptides()]);
 
   if (!peptide) {
     notFound();
   }
+
+  const relatedByUseCase = peptide.useCases
+    .map((useCase) => {
+      const relatedPeptides = sortByEvidenceThenName(
+        allPeptides.filter((candidate) => candidate.slug !== peptide.slug && candidate.useCases.includes(useCase))
+      ).slice(0, 4);
+
+      return {
+        useCase,
+        relatedPeptides
+      };
+    })
+    .filter((group) => group.relatedPeptides.length > 0);
 
   const communityClaims = peptide.evidenceClaims.filter((claim) => claim.section.startsWith("Community Signals"));
   const nonCommunityClaims = peptide.evidenceClaims.filter((claim) => !claim.section.startsWith("Community Signals"));
@@ -96,6 +171,7 @@ export default async function PeptideDetailPage({ params }: PageProps) {
   return (
     <article className="grid" itemScope itemType="https://schema.org/MedicalEntity">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(structuredData) }} />
+      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: backLabel, href: backPath }, { label: peptide.name }]} />
       <section className="card hero">
         <h1 itemProp="name">{peptide.name}</h1>
         <div className="meta-row">
@@ -198,7 +274,7 @@ export default async function PeptideDetailPage({ params }: PageProps) {
           {peptide.vendors.map((vendor) => (
             <article className="card" key={vendor.slug} itemScope itemType="https://schema.org/Organization">
               <h3 itemProp="name">
-                <Link href={`/vendors/${vendor.slug}`} itemProp="url">
+                <Link href={`/vendors/${vendor.slug}?from=${encodeURIComponent(`/peptides/${peptide.slug}`)}`} itemProp="url">
                   {vendor.name}
                 </Link>
               </h3>
@@ -300,6 +376,37 @@ export default async function PeptideDetailPage({ params }: PageProps) {
               ))}
             </tbody>
           </table>
+        )}
+      </section>
+
+      <section className="card">
+        <h2>More Peptides in Similar Categories</h2>
+        {relatedByUseCase.length === 0 ? (
+          <p className="empty-state">No same-category peptide matches are available yet.</p>
+        ) : (
+          <div className="grid two">
+            {relatedByUseCase.map((group) => (
+              <article key={group.useCase} className="card">
+                <h3>
+                  <Link href={`/peptides?useCase=${encodeURIComponent(group.useCase)}`}>{group.useCase}</Link>
+                </h3>
+                <div className="home-link-list">
+                  {group.relatedPeptides.map((relatedPeptide) => {
+                    const returnTo = `/peptides?useCase=${encodeURIComponent(group.useCase)}`;
+                    return (
+                      <Link
+                        key={`${group.useCase}-${relatedPeptide.slug}`}
+                        href={`/peptides/${relatedPeptide.slug}?from=${encodeURIComponent(returnTo)}`}
+                        className="subtle-link"
+                      >
+                        {relatedPeptide.name}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </article>
+            ))}
+          </div>
         )}
       </section>
     </article>

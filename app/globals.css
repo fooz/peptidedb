@@ -128,6 +128,40 @@ a:hover {
   padding-bottom: 2rem;
 }
 
+.breadcrumbs {
+  margin-bottom: -0.2rem;
+}
+
+.breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.breadcrumbs li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.breadcrumbs a {
+  color: #35597d;
+  font-weight: 700;
+}
+
+.breadcrumbs a:hover {
+  color: var(--brand);
+}
+
+.breadcrumb-sep {
+  color: #8da0b6;
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -232,6 +266,42 @@ a:hover {
 
 .grid.three {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.goal-grid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.goal-card {
+  border: 1px solid #c7d7eb;
+  border-radius: 14px;
+  background:
+    linear-gradient(125deg, rgba(15, 55, 99, 0.09) 0%, rgba(15, 55, 99, 0.02) 56%),
+    #f8fbff;
+  padding: 0.8rem;
+}
+
+.goal-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.45rem;
+}
+
+.goal-head h3 {
+  margin: 0 0 0.15rem;
+}
+
+.goal-head p {
+  margin: 0;
+}
+
+.goal-icon {
+  font-size: 1.35rem;
+  width: 1.7rem;
+  text-align: center;
 }
 
 .chip {
