@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json --incremental false",
+    "security:scan-secrets": "node scripts/check-secrets.mjs",
     "enrich:content": "npx --yes tsx scripts/enrich-peptide-content.ts",
     "ingest:social": "npx --yes tsx scripts/run-social-ugc-ingest.ts",
     "sync:reference-list": "npx --yes tsx scripts/sync-reference-peptide-list.ts"

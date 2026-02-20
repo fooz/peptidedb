@@ -32,6 +32,14 @@ Consumer-first peptide reference database with embedded clinical sections, evide
    npm run dev
    ```
 
+## Security checks
+- Never commit real secrets. Keep values only in local `.env.local`, Supabase secrets, and Vercel environment variables.
+- Run secret scan before push:
+  ```bash
+  npm run security:scan-secrets
+  ```
+- GitHub Actions also runs the same scan on pushes/PRs to `main`.
+
 ## Supabase setup
 1. Open Supabase SQL editor.
 2. Run `db/schema.sql`.
