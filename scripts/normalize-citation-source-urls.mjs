@@ -67,6 +67,21 @@ function buildChemblCompoundUrl(chemblId) {
   return `https://www.ebi.ac.uk/chembl/compound_report_card/${encodeURIComponent(String(chemblId).trim())}/`;
 }
 
+function buildGrokipediaSearchUrl(term) {
+  const normalized = term.trim();
+  return normalized ? `https://grokipedia.com/search?q=${encodeURIComponent(normalized)}` : "https://grokipedia.com/";
+}
+
+function buildHubermanAiSearchUrl(term) {
+  const normalized = term.trim();
+  return normalized ? `https://ai.hubermanlab.com/search?q=${encodeURIComponent(normalized)}` : "https://ai.hubermanlab.com/";
+}
+
+function buildPeptiWikiSearchUrl(term) {
+  const normalized = term.trim();
+  return normalized ? `https://pepti.wiki/search?q=${encodeURIComponent(normalized)}` : "https://pepti.wiki/";
+}
+
 function extractQuotedToken(value) {
   const quoted = value.match(/"([^"]+)"/)?.[1]?.trim();
   if (quoted) return quoted;
@@ -151,6 +166,39 @@ function toHumanReadableSourceUrl(rawUrl) {
       return "https://hn.algolia.com/";
     }
     return `https://hn.algolia.com/?query=${encodeURIComponent(query)}&sort=byDate&type=story`;
+  }
+
+  if (hostEquals(host, "grokipedia.com")) {
+    const normalizedPath = parsed.pathname.replace(/\/+$/, "");
+    if (!normalizedPath || normalizedPath === "/search") {
+      const query = firstNonEmpty(parsed.searchParams.get("q"), parsed.searchParams.get("query"));
+      return buildGrokipediaSearchUrl(query);
+    }
+    parsed.protocol = "https:";
+    parsed.hash = "";
+    return parsed.toString();
+  }
+
+  if (hostEquals(host, "ai.hubermanlab.com")) {
+    const normalizedPath = parsed.pathname.replace(/\/+$/, "");
+    if (!normalizedPath || normalizedPath === "/search") {
+      const query = firstNonEmpty(parsed.searchParams.get("q"), parsed.searchParams.get("query"));
+      return buildHubermanAiSearchUrl(query);
+    }
+    parsed.protocol = "https:";
+    parsed.hash = "";
+    return parsed.toString();
+  }
+
+  if (hostEquals(host, "pepti.wiki")) {
+    const normalizedPath = parsed.pathname.replace(/\/+$/, "");
+    if (!normalizedPath || normalizedPath === "/search") {
+      const query = firstNonEmpty(parsed.searchParams.get("q"), parsed.searchParams.get("query"));
+      return buildPeptiWikiSearchUrl(query);
+    }
+    parsed.protocol = "https:";
+    parsed.hash = "";
+    return parsed.toString();
   }
 
   return parsed.toString();

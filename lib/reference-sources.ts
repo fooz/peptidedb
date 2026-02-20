@@ -66,6 +66,30 @@ export function buildChemblCompoundUrl(chemblId: string): string {
   return `https://www.ebi.ac.uk/chembl/compound_report_card/${encodeURIComponent(chemblId.trim())}/`;
 }
 
+export function buildGrokipediaSearchUrl(term: string): string {
+  const normalized = term.trim();
+  if (!normalized) {
+    return "https://grokipedia.com/";
+  }
+  return `https://grokipedia.com/search?q=${encodeURIComponent(normalized)}`;
+}
+
+export function buildHubermanAiSearchUrl(term: string): string {
+  const normalized = term.trim();
+  if (!normalized) {
+    return "https://ai.hubermanlab.com/";
+  }
+  return `https://ai.hubermanlab.com/search?q=${encodeURIComponent(normalized)}`;
+}
+
+export function buildPeptiWikiSearchUrl(term: string): string {
+  const normalized = term.trim();
+  if (!normalized) {
+    return "https://pepti.wiki/";
+  }
+  return `https://pepti.wiki/search?q=${encodeURIComponent(normalized)}`;
+}
+
 export function toHumanReadableSourceUrl(rawUrl: string | null | undefined): string | null {
   const safe = sanitizeExternalUrl(rawUrl);
   if (!safe) {
@@ -144,6 +168,39 @@ export function toHumanReadableSourceUrl(rawUrl: string | null | undefined): str
       return "https://hn.algolia.com/";
     }
     return `https://hn.algolia.com/?query=${encodeURIComponent(query)}&sort=byDate&type=story`;
+  }
+
+  if (hostEquals(hostname, "grokipedia.com")) {
+    const path = parsed.pathname.replace(/\/+$/, "");
+    if (!path || path === "/search") {
+      const query = firstNonEmpty(parsed.searchParams.get("q"), parsed.searchParams.get("query"));
+      return buildGrokipediaSearchUrl(query);
+    }
+    parsed.protocol = "https:";
+    parsed.hash = "";
+    return parsed.toString();
+  }
+
+  if (hostEquals(hostname, "ai.hubermanlab.com")) {
+    const path = parsed.pathname.replace(/\/+$/, "");
+    if (!path || path === "/search") {
+      const query = firstNonEmpty(parsed.searchParams.get("q"), parsed.searchParams.get("query"));
+      return buildHubermanAiSearchUrl(query);
+    }
+    parsed.protocol = "https:";
+    parsed.hash = "";
+    return parsed.toString();
+  }
+
+  if (hostEquals(hostname, "pepti.wiki")) {
+    const path = parsed.pathname.replace(/\/+$/, "");
+    if (!path || path === "/search") {
+      const query = firstNonEmpty(parsed.searchParams.get("q"), parsed.searchParams.get("query"));
+      return buildPeptiWikiSearchUrl(query);
+    }
+    parsed.protocol = "https:";
+    parsed.hash = "";
+    return parsed.toString();
   }
 
   return safe;

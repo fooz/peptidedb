@@ -3,6 +3,9 @@ import {
   buildChemblCompoundUrl,
   buildClinicalTrialsSearchUrl,
   buildFdaDrugLabelSearchUrl,
+  buildGrokipediaSearchUrl,
+  buildHubermanAiSearchUrl,
+  buildPeptiWikiSearchUrl,
   buildPubChemCompoundUrl,
   buildPubMedSearchUrl,
   toHumanReadableSourceUrl
@@ -23,6 +26,9 @@ type EnrichmentSourceHits = {
   chembl: number;
   clinicalTrials: number;
   pubMed: number;
+  grokipedia: number;
+  peptiWiki: number;
+  hubermanAi: number;
 };
 
 type EnrichmentResult = {
@@ -122,6 +128,15 @@ type NciSummary = {
   sourceUrl: string;
 };
 
+type WebSummary = {
+  found: boolean;
+  title: string;
+  summary: string;
+  sourceUrl: string;
+  searchUrl: string;
+  blocked: boolean;
+};
+
 type SourceBundle = {
   clinicalTrials: ClinicalTrialsSnapshot;
   pubMed: PubMedSnapshot;
@@ -130,6 +145,9 @@ type SourceBundle = {
   chembl: ChemblData;
   wikipedia: WikipediaSummary;
   nci: NciSummary;
+  grokipedia: WebSummary;
+  peptiWiki: WebSummary;
+  hubermanAi: WebSummary;
 };
 
 type GeneratedContent = {
@@ -176,7 +194,12 @@ const ENRICHMENT_CLAIM_SECTIONS = [
   "External Sources: ClinicalTrials",
   "External Sources: PubMed",
   "External Sources: openFDA",
-  "External Sources: ChEMBL/PubChem"
+  "External Sources: ChEMBL/PubChem",
+  "External Sources: Wikipedia",
+  "External Sources: NCI",
+  "External Sources: Grokipedia",
+  "External Sources: PeptiWiki",
+  "External Sources: Huberman Lab AI"
 ];
 
 const USE_CASE_RULES: UseCaseRule[] = [
@@ -453,6 +476,123 @@ function decodeHtmlEntities(value: string): string {
     .replace(/&gt;/g, ">");
 }
 
+function decodeJsonEscapes(value: string): string {
+  return value
+    .replace(/\\u([0-9a-fA-F]{4})/g, (_, code: string) => String.fromCharCode(parseInt(code, 16)))
+    .replace(/\\"/g, '"')
+    .replace(/\\\//g, "/")
+    .replace(/\\n/g, " ")
+    .replace(/\\r/g, " ")
+    .replace(/\\t/g, " ")
+    .replace(/\\\\/g, "\\");
+}
+
+function stripHtmlTags(value: string): string {
+  return value.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ");
+}
+
+function extractMetaContent(html: string, key: string, attribute: "name" | "property"): string {
+  const directPattern = new RegExp(
+    `<meta[^>]*${attribute}=["']${key}["'][^>]*content=["']([^"']+)["'][^>]*>`,
+    "i"
+  );
+  const reversedPattern = new RegExp(
+    `<meta[^>]*content=["']([^"']+)["'][^>]*${attribute}=["']${key}["'][^>]*>`,
+    "i"
+  );
+  return firstNonEmpty(
+    decodeHtmlEntities(asString(html.match(directPattern)?.[1])),
+    decodeHtmlEntities(asString(html.match(reversedPattern)?.[1]))
+  );
+}
+
+function extractTitleFromHtml(html: string): string {
+  const rawTitle = asString(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]);
+  return compact(decodeHtmlEntities(stripHtmlTags(rawTitle)));
+}
+
+function isLikelyBlockedHtml(html: string): boolean {
+  const lower = html.toLowerCase();
+  return (
+    lower.includes("just a moment") ||
+    lower.includes("attention required") ||
+    lower.includes("cloudflare") ||
+    lower.includes("cf-chl") ||
+    lower.includes("enable javascript and cookies")
+  );
+}
+
+function buildSearchTerms(name: string, aliases: string[], limit = 4): string[] {
+  return uniqueStrings([name, ...aliases].map((entry) => normalizeSearchName(entry)).filter(Boolean)).slice(0, limit);
+}
+
+function candidateSlug(term: string): string {
+  return term
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function candidateTitle(term: string): string {
+  return normalizeSearchName(term)
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function extractGrokipediaSummaryFromHtml(html: string): { title: string; summary: string } | null {
+  const title = firstNonEmpty(extractMetaContent(html, "og:title", "property"), extractTitleFromHtml(html));
+  const description = firstNonEmpty(
+    extractMetaContent(html, "description", "name"),
+    extractMetaContent(html, "og:description", "property"),
+    decodeJsonEscapes(asString(html.match(/"description":"([^"]{40,1600})"/i)?.[1]))
+  );
+  const summary = truncate(compact(decodeHtmlEntities(stripHtmlTags(description))), 700);
+  if (!summary || summary.toLowerCase().includes("javascript is disabled")) {
+    return null;
+  }
+  return { title, summary };
+}
+
+function extractPeptiWikiSummaryFromHtml(html: string, term: string): { title: string; summary: string; slug: string } | null {
+  const lowerTerm = normalizeSearchName(term).toLowerCase();
+  const metaDescription = firstNonEmpty(
+    extractMetaContent(html, "description", "name"),
+    extractMetaContent(html, "og:description", "property")
+  );
+  const title = firstNonEmpty(extractMetaContent(html, "og:title", "property"), extractTitleFromHtml(html), term);
+  const directOverview = decodeJsonEscapes(asString(html.match(/"overview":"([^"]{40,2400})"/i)?.[1]));
+  const summary = truncate(compact(decodeHtmlEntities(stripHtmlTags(firstNonEmpty(directOverview, metaDescription)))), 700);
+  const slugMatch =
+    html.match(/"slug":"([a-z0-9-]{2,120})"/i)?.[1] ??
+    html.match(/href="\/(?:peptide\/)?([a-z0-9-]{2,120})"/i)?.[1] ??
+    "";
+  const slug = slugMatch || candidateSlug(term);
+  if (!summary) {
+    return null;
+  }
+  if (!summary.toLowerCase().includes(lowerTerm) && !title.toLowerCase().includes(lowerTerm) && !slug.includes(candidateSlug(term))) {
+    return null;
+  }
+  return { title, summary, slug };
+}
+
+function extractHubermanSearchSummary(html: string): { title: string; summary: string } | null {
+  const title = firstNonEmpty(extractMetaContent(html, "og:title", "property"), extractTitleFromHtml(html), "Huberman Lab AI");
+  const snippet = firstNonEmpty(
+    extractMetaContent(html, "description", "name"),
+    extractMetaContent(html, "og:description", "property"),
+    decodeJsonEscapes(asString(html.match(/"snippet":"([^"]{40,1600})"/i)?.[1])),
+    decodeJsonEscapes(asString(html.match(/"description":"([^"]{40,1600})"/i)?.[1]))
+  );
+  const summary = truncate(compact(decodeHtmlEntities(stripHtmlTags(snippet))), 700);
+  if (!summary) {
+    return null;
+  }
+  return { title, summary };
+}
+
 async function fetchClinicalTrialsSnapshot(name: string): Promise<ClinicalTrialsSnapshot> {
   const normalizedName = normalizeSearchName(name) || name;
   const humanSearchUrl = buildClinicalTrialsSearchUrl(normalizedName);
@@ -688,6 +828,181 @@ async function fetchNciSummary(name: string): Promise<NciSummary> {
   } catch {
     return { found: false, summary: "", sourceUrl: "" };
   }
+}
+
+async function fetchGrokipediaSummary(name: string, aliases: string[]): Promise<WebSummary> {
+  const searchTerms = buildSearchTerms(name, aliases, 4);
+  const fallbackSearchUrl = buildGrokipediaSearchUrl(searchTerms[0] ?? name);
+  const emptyResult: WebSummary = {
+    found: false,
+    title: "",
+    summary: "",
+    sourceUrl: "",
+    searchUrl: fallbackSearchUrl,
+    blocked: false
+  };
+
+  for (const term of searchTerms) {
+    const searchUrl = buildGrokipediaSearchUrl(term);
+    const pageCandidates = uniqueStrings([
+      `https://grokipedia.com/page/${encodeURIComponent(candidateTitle(term))}`,
+      `https://grokipedia.com/page/${encodeURIComponent(term)}`,
+      `https://grokipedia.com/page/${encodeURIComponent(candidateSlug(term))}`
+    ]);
+
+    for (const pageUrl of pageCandidates) {
+      try {
+        const html = await fetchText(pageUrl, 1);
+        if (isLikelyBlockedHtml(html)) {
+          continue;
+        }
+        const parsed = extractGrokipediaSummaryFromHtml(html);
+        if (!parsed) {
+          continue;
+        }
+        return {
+          found: true,
+          title: parsed.title || term,
+          summary: parsed.summary,
+          sourceUrl: pageUrl,
+          searchUrl,
+          blocked: false
+        };
+      } catch {
+        continue;
+      }
+    }
+
+    try {
+      const html = await fetchText(searchUrl, 1);
+      if (isLikelyBlockedHtml(html)) {
+        continue;
+      }
+      const parsed = extractGrokipediaSummaryFromHtml(html);
+      if (!parsed) {
+        continue;
+      }
+      return {
+        found: true,
+        title: parsed.title || term,
+        summary: parsed.summary,
+        sourceUrl: searchUrl,
+        searchUrl,
+        blocked: false
+      };
+    } catch {
+      continue;
+    }
+  }
+
+  return emptyResult;
+}
+
+async function fetchPeptiWikiSummary(name: string, aliases: string[]): Promise<WebSummary> {
+  const searchTerms = buildSearchTerms(name, aliases, 4);
+  const fallbackSearchUrl = buildPeptiWikiSearchUrl(searchTerms[0] ?? name);
+  const emptyResult: WebSummary = {
+    found: false,
+    title: "",
+    summary: "",
+    sourceUrl: "",
+    searchUrl: fallbackSearchUrl,
+    blocked: false
+  };
+
+  for (const term of searchTerms) {
+    const slug = candidateSlug(term);
+    const searchUrl = buildPeptiWikiSearchUrl(term);
+    const directUrls = uniqueStrings([
+      `https://pepti.wiki/${encodeURIComponent(slug)}`,
+      `https://pepti.wiki/peptide/${encodeURIComponent(slug)}`
+    ]);
+
+    for (const sourceUrl of directUrls) {
+      try {
+        const html = await fetchText(sourceUrl, 1);
+        if (isLikelyBlockedHtml(html)) {
+          continue;
+        }
+        const parsed = extractPeptiWikiSummaryFromHtml(html, term);
+        if (!parsed) {
+          continue;
+        }
+        return {
+          found: true,
+          title: parsed.title || term,
+          summary: parsed.summary,
+          sourceUrl: sourceUrl.includes(`/${parsed.slug}`) ? sourceUrl : `https://pepti.wiki/${encodeURIComponent(parsed.slug)}`,
+          searchUrl,
+          blocked: false
+        };
+      } catch {
+        continue;
+      }
+    }
+
+    try {
+      const html = await fetchText(searchUrl, 1);
+      if (isLikelyBlockedHtml(html)) {
+        continue;
+      }
+      const parsed = extractPeptiWikiSummaryFromHtml(html, term);
+      if (!parsed) {
+        continue;
+      }
+      return {
+        found: true,
+        title: parsed.title || term,
+        summary: parsed.summary,
+        sourceUrl: `https://pepti.wiki/${encodeURIComponent(parsed.slug)}`,
+        searchUrl,
+        blocked: false
+      };
+    } catch {
+      continue;
+    }
+  }
+
+  return emptyResult;
+}
+
+async function fetchHubermanAiSummary(name: string, aliases: string[]): Promise<WebSummary> {
+  const searchTerms = buildSearchTerms(name, aliases, 3);
+  const fallbackSearchUrl = buildHubermanAiSearchUrl(searchTerms[0] ?? name);
+  const emptyResult: WebSummary = {
+    found: false,
+    title: "",
+    summary: "",
+    sourceUrl: "",
+    searchUrl: fallbackSearchUrl,
+    blocked: false
+  };
+
+  for (const term of searchTerms) {
+    const searchUrl = buildHubermanAiSearchUrl(term);
+    try {
+      const html = await fetchText(searchUrl, 1);
+      if (isLikelyBlockedHtml(html)) {
+        return { ...emptyResult, searchUrl, blocked: true };
+      }
+      const parsed = extractHubermanSearchSummary(html);
+      if (!parsed) {
+        continue;
+      }
+      return {
+        found: true,
+        title: parsed.title || "Huberman Lab AI",
+        summary: parsed.summary,
+        sourceUrl: searchUrl,
+        searchUrl,
+        blocked: false
+      };
+    } catch {
+      continue;
+    }
+  }
+
+  return emptyResult;
 }
 
 function parseOpenFdaText(record: Record<string, unknown>, key: string): string {
@@ -973,14 +1288,17 @@ async function fetchChemblData(name: string): Promise<ChemblData> {
 }
 
 async function collectSourceBundle(name: string, aliases: string[]): Promise<SourceBundle> {
-  const [clinicalTrials, pubMed, openFda, pubChem, chembl, wikipedia, nci] = await Promise.all([
+  const [clinicalTrials, pubMed, openFda, pubChem, chembl, wikipedia, nci, grokipedia, peptiWiki, hubermanAi] = await Promise.all([
     fetchClinicalTrialsSnapshot(name),
     fetchPubMedSnapshot(name),
     fetchOpenFdaLabel(name, aliases),
     fetchPubChemData(name),
     fetchChemblData(name),
     fetchWikipediaSummary(name, aliases),
-    fetchNciSummary(name)
+    fetchNciSummary(name),
+    fetchGrokipediaSummary(name, aliases),
+    fetchPeptiWikiSummary(name, aliases),
+    fetchHubermanAiSummary(name, aliases)
   ]);
   return {
     clinicalTrials,
@@ -989,7 +1307,10 @@ async function collectSourceBundle(name: string, aliases: string[]): Promise<Sou
     pubChem,
     chembl,
     wikipedia,
-    nci
+    nci,
+    grokipedia,
+    peptiWiki,
+    hubermanAi
   };
 }
 
@@ -1084,11 +1405,17 @@ function generateMechanism(name: string, className: string, source: SourceBundle
   const mechanismSnippet = source.chembl.mechanisms[0] ? truncate(source.chembl.mechanisms[0], 260) : "";
   const labelSnippet = source.openFda.clinicalPharmacology ? pickSentence(source.openFda.clinicalPharmacology, 240) : "";
   const pubChemSnippet = source.pubChem.description ? pickSentence(source.pubChem.description, 240) : "";
+  const peptiWikiSnippet = source.peptiWiki.found ? pickSentence(source.peptiWiki.summary, 240) : "";
+  const grokipediaSnippet = source.grokipedia.found ? pickSentence(source.grokipedia.summary, 240) : "";
+  const hubermanSnippet = source.hubermanAi.found ? pickSentence(source.hubermanAi.summary, 220) : "";
 
   return firstNonEmpty([
     [mechanismSnippet, labelSnippet].filter(Boolean).join(" "),
     mechanismSnippet,
     labelSnippet,
+    peptiWikiSnippet,
+    grokipediaSnippet,
+    hubermanSnippet,
     wikiSnippet,
     pubChemSnippet,
     `${name} is listed as ${className || "a peptide"} with mechanism details still evolving across public sources.`
@@ -1116,6 +1443,8 @@ function generateIntroSummary(
 ): string {
   const identity = firstNonEmpty(
     source.wikipedia.found ? pickSentence(source.wikipedia.summary, 240) : "",
+    source.peptiWiki.found ? pickSentence(source.peptiWiki.summary, 230) : "",
+    source.grokipedia.found ? pickSentence(source.grokipedia.summary, 230) : "",
     source.nci.found ? pickSentence(source.nci.summary, 220) : "",
     `${name} is cataloged as ${className || "a peptide reference entry"}.`
   );
@@ -1155,6 +1484,8 @@ function generateLongDescription(
 
   const whatItIs = firstNonEmpty(
     source.wikipedia.found ? source.wikipedia.summary : "",
+    source.peptiWiki.found ? source.peptiWiki.summary : "",
+    source.grokipedia.found ? source.grokipedia.summary : "",
     source.nci.found ? source.nci.summary : "",
     `${name} is categorized as ${className || "a peptide"} in this reference database.`
   );
@@ -1162,6 +1493,7 @@ function generateLongDescription(
   const mechanismText = firstNonEmpty(
     mechanism,
     source.chembl.mechanisms[0] ? source.chembl.mechanisms[0] : "",
+    source.hubermanAi.found ? source.hubermanAi.summary : "",
     `${name} has limited publicly indexed mechanism detail and should be interpreted with source-level caution.`
   );
 
@@ -1372,7 +1704,40 @@ function buildClaims(name: string, source: SourceBundle, grade: EvidenceGrade): 
     });
   }
 
-  return claims.slice(0, 6);
+  if (source.grokipedia.found && source.grokipedia.sourceUrl) {
+    claims.push({
+      section: "External Sources: Grokipedia",
+      claimText: truncate(`Grokipedia context for ${name}: ${pickSentence(source.grokipedia.summary, 180)}`, 250),
+      evidenceGrade: "D",
+      sourceUrl: source.grokipedia.sourceUrl,
+      sourceTitle: source.grokipedia.title || `Grokipedia search results for ${name}`,
+      publishedAt: TODAY
+    });
+  }
+
+  if (source.peptiWiki.found && source.peptiWiki.sourceUrl) {
+    claims.push({
+      section: "External Sources: PeptiWiki",
+      claimText: truncate(`PeptiWiki context for ${name}: ${pickSentence(source.peptiWiki.summary, 180)}`, 250),
+      evidenceGrade: "D",
+      sourceUrl: source.peptiWiki.sourceUrl,
+      sourceTitle: source.peptiWiki.title || `PeptiWiki search results for ${name}`,
+      publishedAt: TODAY
+    });
+  }
+
+  if (source.hubermanAi.found && source.hubermanAi.sourceUrl) {
+    claims.push({
+      section: "External Sources: Huberman Lab AI",
+      claimText: truncate(`Huberman Lab AI search context for ${name}: ${pickSentence(source.hubermanAi.summary, 180)}`, 250),
+      evidenceGrade: "D",
+      sourceUrl: source.hubermanAi.sourceUrl,
+      sourceTitle: source.hubermanAi.title || `Huberman Lab AI search for ${name}`,
+      publishedAt: TODAY
+    });
+  }
+
+  return claims.slice(0, 9);
 }
 
 function generateContent(name: string, className: string, source: SourceBundle): GeneratedContent {
@@ -1590,7 +1955,10 @@ export async function enrichPeptideContent(
     pubChem: 0,
     chembl: 0,
     clinicalTrials: 0,
-    pubMed: 0
+    pubMed: 0,
+    grokipedia: 0,
+    peptiWiki: 0,
+    hubermanAi: 0
   };
 
   for (const peptide of peptides) {
@@ -1601,6 +1969,9 @@ export async function enrichPeptideContent(
       if (source.chembl.found) sourceHits.chembl += 1;
       if (source.clinicalTrials.total > 0) sourceHits.clinicalTrials += 1;
       if (source.pubMed.count > 0) sourceHits.pubMed += 1;
+      if (source.grokipedia.found) sourceHits.grokipedia += 1;
+      if (source.peptiWiki.found) sourceHits.peptiWiki += 1;
+      if (source.hubermanAi.found) sourceHits.hubermanAi += 1;
 
       const generated = generateContent(peptide.name, peptide.className, source);
 

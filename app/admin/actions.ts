@@ -497,7 +497,7 @@ export async function enrichPeptideContentAction() {
     const supabase = requireSupabaseAdmin();
     const result = await enrichPeptideContent(supabase, { onlyPublished: true, limit: 40, delayMs: 110 });
     redirectNotice(
-      `External-source enrichment complete: ${result.peptidesUpdated}/${result.peptidesScanned} peptides updated, ${result.failures} failed. Source hits -> openFDA ${result.sourceHits.openFda}, PubChem ${result.sourceHits.pubChem}, ChEMBL ${result.sourceHits.chembl}, ClinicalTrials ${result.sourceHits.clinicalTrials}, PubMed ${result.sourceHits.pubMed}.`
+      `External-source enrichment complete: ${result.peptidesUpdated}/${result.peptidesScanned} peptides updated, ${result.failures} failed. Source hits -> openFDA ${result.sourceHits.openFda}, PubChem ${result.sourceHits.pubChem}, ChEMBL ${result.sourceHits.chembl}, ClinicalTrials ${result.sourceHits.clinicalTrials}, PubMed ${result.sourceHits.pubMed}, Grokipedia ${result.sourceHits.grokipedia}, PeptiWiki ${result.sourceHits.peptiWiki}, Huberman AI ${result.sourceHits.hubermanAi}.`
     );
   } catch (error) {
     rethrowIfRedirectError(error);
