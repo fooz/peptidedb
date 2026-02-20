@@ -70,9 +70,6 @@ export default function RootLayout({
               <nav className="top-nav">
                 <Link href="/peptides">Peptides</Link>
                 <Link href="/vendors">Vendors</Link>
-                <Link href="/admin" prefetch={false}>
-                  Admin
-                </Link>
               </nav>
             </div>
           </div>
@@ -85,6 +82,9 @@ export default function RootLayout({
               <Link href="/disclaimer">Disclaimer</Link>
               <Link href="/privacy-policy">Privacy Policy</Link>
               <Link href="/rating-methodology">Rating Methodology</Link>
+              <Link href="/admin" prefetch={false}>
+                Admin Login
+              </Link>
             </nav>
           </div>
         </footer>
