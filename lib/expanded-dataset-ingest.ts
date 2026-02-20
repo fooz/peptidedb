@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { expandedPeptideDataset, statusForJurisdiction } from "@/lib/expanded-dataset";
+import { toHumanReadableSourceUrl } from "@/lib/reference-sources";
 import type { JurisdictionCode } from "@/lib/types";
 
 const JURISDICTION_ORDER: JurisdictionCode[] = ["US", "EU", "UK", "CA", "AU"];
@@ -185,13 +186,18 @@ export async function ingestExpandedPeptideDataset(supabase: SupabaseClient) {
       throw new Error(safetyError.message);
     }
 
-    const citationKey = `${seed.claim.sourceUrl}|${seed.claim.publishedAt}`;
+    const normalizedSourceUrl = toHumanReadableSourceUrl(seed.claim.sourceUrl);
+    if (!normalizedSourceUrl) {
+      throw new Error(`Invalid citation source URL for ${seed.slug}.`);
+    }
+
+    const citationKey = `${normalizedSourceUrl}|${seed.claim.publishedAt}`;
     let citationId = citationCache.get(citationKey);
     if (!citationId) {
       const { data: existingCitation } = await supabase
         .from("citations")
         .select("id")
-        .eq("source_url", seed.claim.sourceUrl)
+        .eq("source_url", normalizedSourceUrl)
         .eq("published_at", seed.claim.publishedAt)
         .maybeSingle();
 
@@ -201,7 +207,7 @@ export async function ingestExpandedPeptideDataset(supabase: SupabaseClient) {
         const { data: citation, error: citationError } = await supabase
           .from("citations")
           .insert({
-            source_url: seed.claim.sourceUrl,
+            source_url: normalizedSourceUrl,
             source_title: seed.claim.sourceTitle,
             published_at: seed.claim.publishedAt
           })

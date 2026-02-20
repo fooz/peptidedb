@@ -45,7 +45,7 @@ export type ExpandedPeptideSeed = {
 };
 
 const FDA_LABEL_SOURCE = "https://open.fda.gov/apis/drug/label/";
-const TRIALS_SOURCE = "https://clinicaltrials.gov/data-api/api";
+const TRIALS_SOURCE = "https://clinicaltrials.gov/";
 
 export function statusForJurisdiction(model: StatusModel, jurisdictionCode: JurisdictionCode): RegulatoryStatus {
   if (model === "investigational_all") {

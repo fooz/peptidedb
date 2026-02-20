@@ -1,4 +1,5 @@
 import { getAllPeptides, getAllVendors, getPeptideBySlug } from "@/lib/mock-data";
+import { toHumanReadableSourceUrl } from "@/lib/reference-sources";
 import { getSupabaseClient } from "@/lib/supabase";
 import { sanitizeExternalUrl } from "@/lib/url-security";
 import { getVendorSeedMetadata } from "@/lib/vendor-website-ingest";
@@ -131,7 +132,7 @@ function parseVendorReviewQuote(row: Record<string, unknown>): VendorReviewQuote
   const source = asString(parsed?.source) ?? verificationType.replace("community_review_", "").replace(/_/g, " ");
   const community = asString(parsed?.community) ?? source;
   const quote = asString(parsed?.quote);
-  const sourceUrl = sanitizeExternalUrl(asString(parsed?.sourceUrl));
+  const sourceUrl = toHumanReadableSourceUrl(asString(parsed?.sourceUrl));
   const createdAt = asString(parsed?.createdAt);
   if (!quote || !sourceUrl || !createdAt) {
     return null;
@@ -356,7 +357,7 @@ function mapEvidenceClaims(rows: unknown[]): EvidenceClaim[] {
       const citation = Array.isArray(record.citations) ? asRecord(record.citations[0]) : asRecord(record.citations);
       const section = asString(record.section);
       const claimText = asString(record.claim_text);
-      const sourceUrl = sanitizeExternalUrl(asString(citation?.source_url));
+      const sourceUrl = toHumanReadableSourceUrl(asString(citation?.source_url));
       const publishedAt = asString(citation?.published_at);
       if (!section || !claimText || !sourceUrl || !publishedAt) {
         return null;

@@ -1,3 +1,4 @@
+import { toHumanReadableSourceUrl } from "@/lib/reference-sources";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 import { sanitizeExternalUrl } from "@/lib/url-security";
 
@@ -200,7 +201,7 @@ export async function getAdminDashboardData(
           section: asString(row.section),
           claimText: asString(row.claim_text),
           evidenceGrade: asString(row.evidence_grade) || null,
-          sourceUrl: sanitizeExternalUrl(asString(citation?.source_url)) ?? "",
+          sourceUrl: toHumanReadableSourceUrl(asString(citation?.source_url)) ?? "",
           sourceTitle: asString(citation?.source_title),
           publishedAt: asString(citation?.published_at)
         };

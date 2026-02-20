@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { toHumanReadableSourceUrl } from "@/lib/reference-sources";
 import type { EvidenceGrade } from "@/lib/types";
 
 type LiveClaimCandidate = {
@@ -204,10 +205,15 @@ async function getRecentClinicalTrialsClaims(peptideName: string, maxItems: numb
 }
 
 async function findOrCreateCitationId(supabase: SupabaseClient, claim: LiveClaimCandidate): Promise<number> {
+  const normalizedSourceUrl = toHumanReadableSourceUrl(claim.sourceUrl);
+  if (!normalizedSourceUrl) {
+    throw new Error("Missing or invalid live citation URL.");
+  }
+
   const { data: existingRows, error: existingError } = await supabase
     .from("citations")
     .select("id,source_title")
-    .eq("source_url", claim.sourceUrl)
+    .eq("source_url", normalizedSourceUrl)
     .eq("published_at", claim.publishedAt)
     .order("id", { ascending: false })
     .limit(1);
@@ -229,7 +235,7 @@ async function findOrCreateCitationId(supabase: SupabaseClient, claim: LiveClaim
   const { data: inserted, error: insertError } = await supabase
     .from("citations")
     .insert({
-      source_url: claim.sourceUrl,
+      source_url: normalizedSourceUrl,
       source_title: claim.sourceTitle,
       published_at: claim.publishedAt
     })

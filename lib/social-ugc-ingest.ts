@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { toHumanReadableSourceUrl } from "@/lib/reference-sources";
 import { computeVendorScore } from "@/lib/vendor-website-ingest";
 import type { EvidenceGrade } from "@/lib/types";
 
@@ -586,10 +587,15 @@ async function findOrCreateCitationId(
   sourceTitle: string,
   publishedAt: string
 ): Promise<number> {
+  const normalizedSourceUrl = toHumanReadableSourceUrl(sourceUrl);
+  if (!normalizedSourceUrl) {
+    throw new Error("Missing or invalid social citation URL.");
+  }
+
   const { data: existingRows, error: existingError } = await supabase
     .from("citations")
     .select("id")
-    .eq("source_url", sourceUrl)
+    .eq("source_url", normalizedSourceUrl)
     .eq("published_at", publishedAt)
     .order("id", { ascending: false })
     .limit(1);
@@ -606,7 +612,7 @@ async function findOrCreateCitationId(
   const { data: inserted, error: insertError } = await supabase
     .from("citations")
     .insert({
-      source_url: sourceUrl,
+      source_url: normalizedSourceUrl,
       source_title: sourceTitle,
       published_at: publishedAt
     })

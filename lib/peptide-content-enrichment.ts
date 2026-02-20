@@ -1,4 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  buildChemblCompoundUrl,
+  buildClinicalTrialsSearchUrl,
+  buildFdaDrugLabelSearchUrl,
+  buildPubChemCompoundUrl,
+  buildPubMedSearchUrl,
+  toHumanReadableSourceUrl
+} from "@/lib/reference-sources";
 import type { DosingContext, EvidenceGrade } from "@/lib/types";
 
 type JurisdictionCode = "US" | "EU" | "UK" | "CA" | "AU";
@@ -381,6 +389,7 @@ function normalizeSearchName(name: string): string {
 
 async function fetchClinicalTrialsSnapshot(name: string): Promise<ClinicalTrialsSnapshot> {
   const normalizedName = normalizeSearchName(name) || name;
+  const humanSearchUrl = buildClinicalTrialsSearchUrl(normalizedName);
   const params = new URLSearchParams({
     "query.term": normalizedName,
     pageSize: "100",
@@ -445,7 +454,7 @@ async function fetchClinicalTrialsSnapshot(name: string): Promise<ClinicalTrials
       withResults: 0,
       latestUpdate: "",
       topConditions: [],
-      searchUrl: url
+      searchUrl: humanSearchUrl
     };
   }
 
@@ -463,18 +472,20 @@ async function fetchClinicalTrialsSnapshot(name: string): Promise<ClinicalTrials
     withResults,
     latestUpdate,
     topConditions,
-    searchUrl: url
+    searchUrl: humanSearchUrl
   };
 }
 
 async function fetchPubMedSnapshot(name: string): Promise<PubMedSnapshot> {
   const normalizedName = normalizeSearchName(name) || name;
+  const pubMedTerm = `"${normalizedName}"[Title/Abstract] AND (clinical OR trial OR randomized OR review)`;
+  const humanSearchUrl = buildPubMedSearchUrl(pubMedTerm);
   const searchParams = new URLSearchParams({
     db: "pubmed",
     retmode: "json",
     retmax: "6",
     sort: "pub+date",
-    term: `"${normalizedName}"[Title/Abstract] AND (clinical OR trial OR randomized OR review)`
+    term: pubMedTerm
   });
   const searchUrl = `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?${searchParams.toString()}`;
 
@@ -489,7 +500,7 @@ async function fetchPubMedSnapshot(name: string): Promise<PubMedSnapshot> {
         count,
         newestYear: null,
         recentTitles: [],
-        searchUrl
+        searchUrl: humanSearchUrl
       };
     }
 
@@ -524,14 +535,14 @@ async function fetchPubMedSnapshot(name: string): Promise<PubMedSnapshot> {
       count,
       newestYear,
       recentTitles,
-      searchUrl
+      searchUrl: humanSearchUrl
     };
   } catch {
     return {
       count: 0,
       newestYear: null,
       recentTitles: [],
-      searchUrl
+      searchUrl: humanSearchUrl
     };
   }
 }
@@ -604,7 +615,7 @@ async function fetchOpenFdaLabel(name: string, aliases: string[]): Promise<OpenF
         clinicalPharmacology,
         routeHints,
         frequencyHints,
-        sourceUrl: url
+        sourceUrl: buildFdaDrugLabelSearchUrl(term)
       };
     } catch {
       continue;
@@ -698,7 +709,7 @@ async function fetchPubChemData(name: string): Promise<PubChemData> {
       molecularFormula,
       molecularWeight,
       synonyms,
-      sourceUrl: descriptionUrl
+      sourceUrl: buildPubChemCompoundUrl(cid)
     };
   } catch {
     return emptyResult;
@@ -811,7 +822,7 @@ async function fetchChemblData(name: string): Promise<ChemblData> {
       firstApproval,
       mechanisms,
       indications,
-      sourceUrl: detailUrl
+      sourceUrl: buildChemblCompoundUrl(chemblId)
     };
   } catch {
     return emptyResult;
@@ -1182,10 +1193,15 @@ async function findOrCreateCitationId(
   sourceTitle: string,
   publishedAt: string
 ): Promise<number> {
+  const normalizedSourceUrl = toHumanReadableSourceUrl(sourceUrl);
+  if (!normalizedSourceUrl) {
+    throw new Error("Missing or invalid citation URL.");
+  }
+
   const { data: existingRows, error: existingError } = await supabase
     .from("citations")
     .select("id,source_title")
-    .eq("source_url", sourceUrl)
+    .eq("source_url", normalizedSourceUrl)
     .eq("published_at", publishedAt)
     .order("id", { ascending: false })
     .limit(1);
@@ -1203,7 +1219,7 @@ async function findOrCreateCitationId(
   const { data: inserted, error: insertError } = await supabase
     .from("citations")
     .insert({
-      source_url: sourceUrl,
+      source_url: normalizedSourceUrl,
       source_title: sourceTitle || null,
       published_at: publishedAt
     })

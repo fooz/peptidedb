@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { toHumanReadableSourceUrl } from "@/lib/reference-sources";
 
 type TrialPeptideCandidate = {
   slug: string;
@@ -516,7 +517,7 @@ export async function ingestClinicalTrialsCatalog(
 
   const citationsPayload = newCandidates
     .map((candidate) => ({
-      source_url: candidate.sourceUrl,
+      source_url: toHumanReadableSourceUrl(candidate.sourceUrl) ?? "",
       source_title: candidate.sourceTitle,
       published_at: candidate.publishedAt
     }))
@@ -552,7 +553,8 @@ export async function ingestClinicalTrialsCatalog(
   const claimsPayload = newCandidates
     .map((candidate) => {
       const peptideId = peptideIdBySlug.get(candidate.slug);
-      const citationId = citationIdByUrl.get(candidate.sourceUrl);
+      const normalizedSourceUrl = toHumanReadableSourceUrl(candidate.sourceUrl);
+      const citationId = normalizedSourceUrl ? citationIdByUrl.get(normalizedSourceUrl) : undefined;
       if (!peptideId || !citationId) {
         return null;
       }

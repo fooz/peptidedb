@@ -7,6 +7,7 @@ import { ingestClinicalTrialsCatalog } from "@/lib/clinicaltrials-catalog-ingest
 import { ingestExpandedPeptideDataset } from "@/lib/expanded-dataset-ingest";
 import { refreshLiveEvidenceClaims } from "@/lib/live-evidence-refresh";
 import { enrichPeptideContent } from "@/lib/peptide-content-enrichment";
+import { toHumanReadableSourceUrl } from "@/lib/reference-sources";
 import { ingestSocialUgcSignals } from "@/lib/social-ugc-ingest";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 import { ingestVendorWebsiteCatalog } from "@/lib/vendor-website-ingest";
@@ -304,8 +305,9 @@ export async function addCitationClaimAction(formData: FormData) {
     const sourceTitle = clean(formData.get("sourceTitle"));
     const sourcePublishedAt = clean(formData.get("sourcePublishedAt"));
     const editPeptideSlug = clean(formData.get("editPeptideSlug"));
+    const normalizedSourceUrl = toHumanReadableSourceUrl(sourceUrl);
 
-    if (!peptideId || !section || !claimText || !sourceUrl || !sourcePublishedAt) {
+    if (!peptideId || !section || !claimText || !sourceUrl || !sourcePublishedAt || !normalizedSourceUrl) {
       redirectNotice(
         "Citation claim requires peptide, section, claim text, source URL, and source published date.",
         "error"
@@ -315,7 +317,7 @@ export async function addCitationClaimAction(formData: FormData) {
     const { data: citation, error: citationError } = await supabase
       .from("citations")
       .insert({
-        source_url: sourceUrl,
+        source_url: normalizedSourceUrl,
         source_title: sourceTitle || null,
         published_at: sourcePublishedAt
       })
