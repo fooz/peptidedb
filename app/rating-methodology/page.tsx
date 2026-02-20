@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Breadcrumbs } from "@/app/components/breadcrumbs";
+import { absoluteUrl } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Rating Methodology",
   description: "How PeptideDB calculates vendor ratings and confidence.",
+  openGraph: {
+    type: "article",
+    url: absoluteUrl("/rating-methodology"),
+    title: "Rating Methodology | PeptideDB",
+    description: "How PeptideDB calculates vendor ratings and confidence."
+  },
   alternates: {
     canonical: "/rating-methodology"
   }
@@ -38,6 +45,18 @@ export default function RatingMethodologyPage() {
           Ratings are periodically refreshed as new data is ingested. See the <Link href="/vendors">Vendor Directory</Link>{" "}
           for current tags and status.
         </p>
+        <h2 id="evidence-hierarchy">Evidence Source Hierarchy</h2>
+        <p>
+          Peptide claims are interpreted using a source-priority model: regulatory labeling and high-quality
+          randomized/meta-analytic evidence are weighted above observational reports, mechanistic preclinical studies,
+          and community discussions.
+        </p>
+        <ul>
+          <li>Tier 1: Regulatory labeling and high-quality controlled human outcome evidence.</li>
+          <li>Tier 2: Smaller human studies, observational evidence, and protocol-level clinical reports.</li>
+          <li>Tier 3: Preclinical/mechanistic evidence and expert-context summaries.</li>
+          <li>Tier 4: Community signal data used as context, not primary efficacy proof.</li>
+        </ul>
       </section>
     </div>
   );

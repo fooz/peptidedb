@@ -17,6 +17,9 @@ type PageProps = {
 
 export const metadata: Metadata = {
   title: "Reset Admin Password",
+  alternates: {
+    canonical: "/admin/reset-password"
+  },
   robots: {
     index: false,
     follow: false

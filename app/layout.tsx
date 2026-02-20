@@ -70,6 +70,7 @@ export default function RootLayout({
               <nav className="top-nav">
                 <Link href="/peptides">Peptides</Link>
                 <Link href="/vendors">Vendors</Link>
+                <Link href="/goals">Goals</Link>
               </nav>
             </div>
           </div>

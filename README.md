@@ -27,6 +27,8 @@ Consumer-first peptide reference database with embedded clinical sections, evide
    - `ADMIN_SESSION_SECRET` (recommended; random long string for signing admin sessions)
    - `ADMIN_AUTH_BUCKET` (optional, default: `vendor-docs`)
    - `ADMIN_AUTH_OBJECT_PATH` (optional, default: `_system/admin-auth.json`)
+   - `INDEXNOW_KEY` (optional; enables `/indexnow.txt` and IndexNow submissions)
+   - `INDEXNOW_PUBLISH_TOKEN` (optional; required to call `/api/indexnow`)
 4. Start:
    ```bash
    npm run dev
@@ -60,6 +62,8 @@ Consumer-first peptide reference database with embedded clinical sections, evide
    - `ADMIN_SESSION_SECRET`
    - `ADMIN_AUTH_BUCKET` (optional)
    - `ADMIN_AUTH_OBJECT_PATH` (optional)
+   - `INDEXNOW_KEY` (optional, recommended for Bing/Yandex recrawl acceleration)
+   - `INDEXNOW_PUBLISH_TOKEN` (optional, required for `/api/indexnow`)
 3. Redeploy.
 
 ## DreamHost domain mapping
@@ -75,14 +79,28 @@ Consumer-first peptide reference database with embedded clinical sections, evide
 - Draft vs published visibility (`is_published`) on peptides and vendors
 - Password-protected admin dashboard at `/admin`
 - Citation claim workflow in admin (requires source URL + publication date)
+- Search crawler assets: `/robots.txt`, `/sitemap.xml`, `/manifest.webmanifest`, `/llms.txt`
 - One-click expanded dataset ingest button in `/admin`
 - One-click live evidence refresh button in `/admin` (PubMed + ClinicalTrials)
 - One-click high-volume ClinicalTrials catalog ingest in `/admin` (targets hundreds of peptide entries)
 - One-click vendor website ingest in `/admin` (known vendor sites -> vendor pages + peptide listings)
 - Evidence and references section on peptide detail pages
 - Vendor profile pages at `/vendors/[slug]` with features, trust signals, and linked peptide listings
+- Goal-focused SEO landing pages at `/goals` and `/goals/[slug]`
+- Pagination on peptide and vendor directories for crawl/performance efficiency
+- IndexNow submission endpoint at `/api/indexnow` plus key file `/indexnow.txt`
 - Supabase-backed reads with fallback data if tables are empty
 - Health endpoint: `/api/health`
+
+## SEO / Indexing ops
+1. Submit sitemap to Google Search Console and Bing Webmaster Tools:
+   - `https://yourdomain.com/sitemap.xml`
+2. Confirm robots endpoint:
+   - `https://yourdomain.com/robots.txt`
+3. Optional: Submit updated URLs to IndexNow:
+   ```bash
+   npm run seo:indexnow -- https://yourdomain.com/peptides/ipamorelin https://yourdomain.com/vendors/mochi-health
+   ```
 
 ## Next implementation steps
 1. Build admin ingestion routes for studies/regulatory data.

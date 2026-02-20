@@ -9,6 +9,7 @@ import { absoluteUrl, safeJsonLd } from "@/lib/seo";
 
 type SearchValue = string | string[] | undefined;
 type SearchParams = Record<string, SearchValue>;
+const PAGE_SIZE = 48;
 
 function uniqueSorted(values: string[]): string[] {
   return Array.from(new Set(values.filter((value) => value.trim().length > 0))).sort((a, b) =>
@@ -23,6 +24,7 @@ function buildCurrentFilterPath(filters: {
   status: string;
   evidence: string;
   route: string;
+  page: number;
 }): string {
   const params = new URLSearchParams();
   if (filters.q) {
@@ -43,29 +45,34 @@ function buildCurrentFilterPath(filters: {
   if (filters.route) {
     params.set("route", filters.route);
   }
+  if (filters.page > 1) {
+    params.set("page", String(filters.page));
+  }
   const query = params.toString();
   return query ? `/peptides?${query}` : "/peptides";
+}
+
+function parsePage(searchParams?: SearchParams): number {
+  const raw = Array.isArray(searchParams?.page) ? searchParams?.page[0] : searchParams?.page;
+  const parsed = Number(raw ?? "");
+  return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : 1;
 }
 
 type PageProps = {
   searchParams: Promise<SearchParams | undefined>;
 };
 
-export const metadata: Metadata = {
-  title: "Peptides",
-  description:
-    "Peptide directory with filters for use cases, evidence grade, jurisdiction, and regulatory status.",
-  alternates: {
-    canonical: "/peptides"
-  }
-};
-
 export default async function PeptidesPage({ searchParams }: PageProps) {
   const resolvedSearchParams = await searchParams;
   const filters = parsePeptideFilters(resolvedSearchParams);
+  const requestedPage = parsePage(resolvedSearchParams);
   const peptides = await listPeptides();
   const filtered = filterPeptides(peptides, filters);
-  const currentFilterPath = buildCurrentFilterPath(filters);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const pageStart = (currentPage - 1) * PAGE_SIZE;
+  const pageItems = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+  const currentFilterPath = buildCurrentFilterPath({ ...filters, page: currentPage });
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
@@ -75,9 +82,9 @@ export default async function PeptidesPage({ searchParams }: PageProps) {
     mainEntity: {
       "@type": "ItemList",
       numberOfItems: filtered.length,
-      itemListElement: filtered.slice(0, 100).map((peptide, index) => ({
+      itemListElement: pageItems.map((peptide, index) => ({
         "@type": "ListItem",
-        position: index + 1,
+        position: pageStart + index + 1,
         url: absoluteUrl(`/peptides/${peptide.slug}`),
         name: capitalizeLeadingLetter(peptide.name)
       }))
@@ -99,6 +106,9 @@ export default async function PeptidesPage({ searchParams }: PageProps) {
         </p>
         <p className="muted">
           Showing <strong>{filtered.length}</strong> of <strong>{peptides.length}</strong> peptides.
+        </p>
+        <p className="muted">
+          Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>.
         </p>
       </section>
 
@@ -180,7 +190,7 @@ export default async function PeptidesPage({ searchParams }: PageProps) {
         </form>
       </section>
 
-      {filtered.map((peptide) => (
+      {pageItems.map((peptide) => (
         <article key={peptide.slug} className="card" itemScope itemType="https://schema.org/MedicalEntity">
           <h2>
             <Link href={`/peptides/${peptide.slug}?from=${encodeURIComponent(currentFilterPath)}`} itemProp="url">
@@ -207,7 +217,66 @@ export default async function PeptidesPage({ searchParams }: PageProps) {
         <section className="card">
           <p className="empty-state">No peptides matched these filters.</p>
         </section>
-      ) : null}
+      ) : (
+        <section className="card">
+          <div className="pagination-bar">
+            {currentPage > 1 ? (
+              <Link
+                className="btn"
+                href={buildCurrentFilterPath({ ...filters, page: currentPage - 1 })}
+              >
+                Previous
+              </Link>
+            ) : (
+              <span />
+            )}
+            <p className="muted">
+              Page {currentPage} of {totalPages}
+            </p>
+            {currentPage < totalPages ? (
+              <Link
+                className="btn"
+                href={buildCurrentFilterPath({ ...filters, page: currentPage + 1 })}
+              >
+                Next
+              </Link>
+            ) : (
+              <span />
+            )}
+          </div>
+        </section>
+      )}
     </div>
   );
+}
+
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const resolvedSearchParams = await searchParams;
+  const filters = parsePeptideFilters(resolvedSearchParams);
+  const requestedPage = parsePage(resolvedSearchParams);
+  const hasFilter =
+    Boolean(filters.q) ||
+    Boolean(filters.useCase) ||
+    Boolean(filters.jurisdiction) ||
+    Boolean(filters.status) ||
+    Boolean(filters.evidence) ||
+    Boolean(filters.route) ||
+    requestedPage > 1;
+
+  return {
+    title: "Peptide Directory",
+    description:
+      "Peptide directory with filters for use cases, evidence grade, jurisdiction, and regulatory status.",
+    openGraph: {
+      type: "website",
+      url: absoluteUrl("/peptides"),
+      title: "Peptide Directory | PeptideDB",
+      description:
+        "Peptide directory with filters for use cases, evidence grade, jurisdiction, and regulatory status."
+    },
+    alternates: {
+      canonical: "/peptides"
+    },
+    robots: hasFilter ? { index: false, follow: true } : { index: true, follow: true }
+  };
 }

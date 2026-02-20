@@ -1,9 +1,16 @@
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/app/components/breadcrumbs";
+import { absoluteUrl } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Disclaimer",
   description: "Medical and informational disclaimer for PeptideDB.",
+  openGraph: {
+    type: "article",
+    url: absoluteUrl("/disclaimer"),
+    title: "Disclaimer | PeptideDB",
+    description: "Medical and informational disclaimer for PeptideDB."
+  },
   alternates: {
     canonical: "/disclaimer"
   }

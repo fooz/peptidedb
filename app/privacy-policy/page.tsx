@@ -1,9 +1,16 @@
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/app/components/breadcrumbs";
+import { absoluteUrl } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description: "Privacy policy for PeptideDB.",
+  openGraph: {
+    type: "article",
+    url: absoluteUrl("/privacy-policy"),
+    title: "Privacy Policy | PeptideDB",
+    description: "Privacy policy for PeptideDB."
+  },
   alternates: {
     canonical: "/privacy-policy"
   }

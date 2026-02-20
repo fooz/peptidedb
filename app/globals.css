@@ -653,6 +653,22 @@ tbody tr:nth-child(even) td {
   margin-bottom: 0.7rem;
 }
 
+.pagination-bar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.pagination-bar p {
+  margin: 0;
+  text-align: center;
+}
+
+.pagination-bar > :last-child {
+  justify-self: end;
+}
+
 .rating-display {
   display: inline-flex;
   align-items: center;
@@ -717,6 +733,34 @@ tbody tr:nth-child(even) td {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 0.7rem;
+}
+
+.facts-grid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.65rem;
+}
+
+.facts-grid div {
+  border: 1px solid var(--line);
+  background: #fbfdff;
+  border-radius: 10px;
+  padding: 0.6rem;
+}
+
+.facts-grid dt {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #35597d;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin: 0 0 0.2rem;
+}
+
+.facts-grid dd {
+  margin: 0;
+  color: #1f3248;
 }
 
 .section-nav-card h2 {
@@ -790,5 +834,13 @@ tbody tr:nth-child(even) td {
 
   .home-search-row {
     grid-template-columns: 1fr;
+  }
+
+  .pagination-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .pagination-bar > :last-child {
+    justify-self: start;
   }
 }

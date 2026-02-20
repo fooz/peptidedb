@@ -2,135 +2,31 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { StarRating } from "@/app/components/star-rating";
 import { capitalizeLeadingLetter } from "@/lib/display-format";
+import { buildHealthGoalCards } from "@/lib/health-goals";
 import { listPeptides, listVendors } from "@/lib/repository";
 import { absoluteUrl, safeJsonLd } from "@/lib/seo";
-import type { PeptideSummary } from "@/lib/types";
 
-const EVIDENCE_RANK: Record<PeptideSummary["evidenceGrade"], number> = {
-  A: 0,
-  B: 1,
-  C: 2,
-  D: 3,
-  I: 4
-};
-
-type HealthGoalDefinition = {
-  slug: string;
-  icon: string;
-  title: string;
-  subtitle: string;
-  mappedUseCases: string[];
-};
-
-type HealthGoalCard = HealthGoalDefinition & {
-  matchedUseCases: string[];
-  primaryUseCase: string;
-  peptideCount: number;
-  peptides: PeptideSummary[];
-};
-
-const HEALTH_GOAL_DEFINITIONS: HealthGoalDefinition[] = [
-  {
-    slug: "weight-loss-metabolic",
-    icon: "🏃",
-    title: "Weight Loss",
-    subtitle: "Fat loss and metabolic support",
-    mappedUseCases: ["Weight Management", "Type 2 Diabetes", "Cardiometabolic Risk Reduction"]
-  },
-  {
-    slug: "muscle-strength",
-    icon: "💪",
-    title: "Muscle & Strength",
-    subtitle: "Muscle maintenance and performance support",
-    mappedUseCases: ["Growth Hormone Deficiency", "Growth Hormone Secretagogue", "Recovery Support", "Tissue Repair"]
-  },
-  {
-    slug: "anti-aging-longevity",
-    icon: "✨",
-    title: "Anti-Aging & Longevity",
-    subtitle: "Skin health, vitality, and inflammatory balance",
-    mappedUseCases: ["Dermatology & Aesthetics", "Inflammatory & Immune Modulation", "Immune Modulation"]
-  },
-  {
-    slug: "recovery-healing",
-    icon: "🩹",
-    title: "Recovery & Healing",
-    subtitle: "Tissue support and post-stress recovery",
-    mappedUseCases: ["Tissue Repair", "Recovery Support", "GI Symptoms"]
-  },
-  {
-    slug: "cognitive",
-    icon: "🧠",
-    title: "Cognitive Enhancement",
-    subtitle: "Focus, memory, and neurological support",
-    mappedUseCases: ["Neurology & Cognition"]
-  },
-  {
-    slug: "hormone-reproductive",
-    icon: "⚖️",
-    title: "Hormone & Reproductive Health",
-    subtitle: "Endocrine and reproductive support",
-    mappedUseCases: ["Reproductive Health", "Sexual Health", "Endocrine Suppression"]
-  },
-  {
-    slug: "renal-metabolic",
-    icon: "🩺",
-    title: "Kidney & Metabolic Care",
-    subtitle: "Renal and broad metabolic management",
-    mappedUseCases: ["Kidney & Renal Care", "Type 1 Diabetes", "Type 2 Diabetes"]
-  }
-];
-
-function uniqueBySlug(peptides: PeptideSummary[]): PeptideSummary[] {
-  const deduped = new Map<string, PeptideSummary>();
-  for (const peptide of peptides) {
-    if (!deduped.has(peptide.slug)) {
-      deduped.set(peptide.slug, peptide);
+function uniqueBySlug<T extends { slug: string }>(items: T[]): T[] {
+  const deduped = new Map<string, T>();
+  for (const item of items) {
+    if (!deduped.has(item.slug)) {
+      deduped.set(item.slug, item);
     }
   }
   return Array.from(deduped.values());
 }
 
-function sortForPreview(peptides: PeptideSummary[]): PeptideSummary[] {
-  return [...peptides].sort((a, b) => {
-    const gradeRank = EVIDENCE_RANK[a.evidenceGrade] - EVIDENCE_RANK[b.evidenceGrade];
-    if (gradeRank !== 0) {
-      return gradeRank;
-    }
-    return a.name.localeCompare(b.name);
-  });
-}
-
-function buildHealthGoalCards(peptides: PeptideSummary[]): HealthGoalCard[] {
-  const useCaseSet = new Set(peptides.flatMap((peptide) => peptide.useCases));
-
-  return HEALTH_GOAL_DEFINITIONS.map((definition) => {
-    const matchedUseCases = definition.mappedUseCases.filter((useCase) => useCaseSet.has(useCase));
-    if (matchedUseCases.length === 0) {
-      return null;
-    }
-
-    const matchedPeptides = sortForPreview(
-      uniqueBySlug(peptides.filter((peptide) => peptide.useCases.some((useCase) => matchedUseCases.includes(useCase))))
-    );
-
-    return {
-      ...definition,
-      matchedUseCases,
-      primaryUseCase: matchedUseCases[0],
-      peptideCount: matchedPeptides.length,
-      peptides: matchedPeptides.slice(0, 4)
-    } satisfies HealthGoalCard;
-  })
-    .filter((goal): goal is HealthGoalCard => goal !== null && goal.peptideCount > 0)
-    .sort((a, b) => b.peptideCount - a.peptideCount)
-    .slice(0, 6);
-}
-
 export const metadata: Metadata = {
-  title: "Home",
+  title: "PeptideDB: Evidence-First Peptide Reference Database",
   description:
     "Consumer-friendly peptide reference organized by health goals, with embedded clinical context, jurisdiction status badges, and research-derived vendor ratings.",
+  openGraph: {
+    type: "website",
+    url: absoluteUrl("/"),
+    title: "PeptideDB: Evidence-First Peptide Reference Database",
+    description:
+      "Consumer-friendly peptide reference organized by health goals, with embedded clinical context, jurisdiction status badges, and research-derived vendor ratings."
+  },
   alternates: {
     canonical: "/"
   }
@@ -253,6 +149,9 @@ export default async function HomePage() {
               </div>
               <Link className="btn" href={`/peptides?useCase=${encodeURIComponent(goal.primaryUseCase)}`}>
                 View {goal.peptideCount} {goal.peptideCount === 1 ? "peptide" : "peptides"}
+              </Link>
+              <Link className="btn" href={`/goals/${goal.slug}`}>
+                Explore Goal
               </Link>
             </article>
           ))}

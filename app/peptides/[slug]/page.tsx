@@ -65,6 +65,18 @@ function formatEvidenceType(value: string): string {
   return cleaned || value;
 }
 
+function latestReviewDate(claims: { publishedAt: string; retrievedAt: string | null }[]): string | null {
+  const candidates = claims
+    .map((claim) => claim.retrievedAt ?? claim.publishedAt)
+    .map((value) => new Date(value))
+    .filter((date) => !Number.isNaN(date.getTime()));
+  if (candidates.length === 0) {
+    return null;
+  }
+  const latest = candidates.sort((a, b) => b.getTime() - a.getTime())[0];
+  return latest.toISOString();
+}
+
 function asSingle(value: SearchValue): string {
   if (Array.isArray(value)) {
     return value[0]?.trim() ?? "";
@@ -118,6 +130,9 @@ function breadcrumbLabelForFromPath(fromPath: string | null): string {
   if (fromPath.startsWith("/vendors")) {
     return "Vendors";
   }
+  if (fromPath.startsWith("/goals")) {
+    return "Health Goals";
+  }
   return "Browse";
 }
 
@@ -159,7 +174,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function PeptideDetailPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const resolvedSearchParams = (await searchParams) as SearchParams | undefined;
-  const fromPath = sanitizeInternalPath(asSingle(resolvedSearchParams?.from), ["/peptides", "/vendors"]);
+  const fromPath = sanitizeInternalPath(asSingle(resolvedSearchParams?.from), ["/peptides", "/vendors", "/goals"]);
   const backPath = fromPath ?? "/peptides";
   const backLabel = breadcrumbLabelForFromPath(fromPath);
 
@@ -171,6 +186,7 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
   const displayName = capitalizeLeadingLetter(peptide.name);
   const overviewText = combineOverview(peptide.intro, peptide.mechanism);
   const longDescriptionSections = parseLongDescriptionSections(peptide.longDescription);
+  const reviewedAt = latestReviewDate(peptide.evidenceClaims);
 
   const relatedByUseCase = peptide.useCases
     .map((useCase) => {
@@ -266,6 +282,53 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
             Related
           </a>
         </div>
+      </section>
+
+      <section className="card">
+        <h2>Key Facts</h2>
+        <dl className="facts-grid">
+          <div>
+            <dt>Peptide class</dt>
+            <dd>{peptide.className}</dd>
+          </div>
+          <div>
+            <dt>Evidence grade</dt>
+            <dd>{peptide.evidenceGrade}</dd>
+          </div>
+          <div>
+            <dt>Primary use contexts</dt>
+            <dd>{peptide.useCases.slice(0, 4).join(", ") || "Not specified"}</dd>
+          </div>
+          <div>
+            <dt>Regulatory status scope</dt>
+            <dd>
+              {Object.entries(peptide.statusByJurisdiction)
+                .map(([jurisdiction, status]) => `${jurisdiction}: ${statusLabel(status)}`)
+                .join(" · ")}
+            </dd>
+          </div>
+          <div>
+            <dt>Last evidence refresh</dt>
+            <dd>{reviewedAt ? formatDate(reviewedAt) : "Not available"}</dd>
+          </div>
+          <div>
+            <dt>Methodology</dt>
+            <dd>
+              <Link href="/rating-methodology#evidence-hierarchy">Evidence hierarchy and scoring approach</Link>
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="card">
+        <h2>Clinical And Trust Context</h2>
+        <p className="muted">
+          This page is informational and not a treatment recommendation. Claims are graded by source quality, with
+          regulatory labeling and higher-quality human evidence prioritized over lower-certainty sources.
+        </p>
+        <p className="muted">
+          See <Link href="/disclaimer">Disclaimer</Link> and <Link href="/rating-methodology#evidence-hierarchy">Evidence hierarchy</Link> before applying content in real-world care decisions.
+        </p>
       </section>
 
       <section className="card" id={SECTION_ID.features}>

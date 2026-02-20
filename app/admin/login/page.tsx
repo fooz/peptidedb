@@ -18,6 +18,9 @@ type PageProps = {
 
 export const metadata: Metadata = {
   title: "Admin Login",
+  alternates: {
+    canonical: "/admin/login"
+  },
   robots: {
     index: false,
     follow: false

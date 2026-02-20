@@ -9,15 +9,7 @@ import { absoluteUrl, safeJsonLd } from "@/lib/seo";
 
 type SearchValue = string | string[] | undefined;
 type SearchParams = Record<string, SearchValue>;
-
-export const metadata: Metadata = {
-  title: "Vendors",
-  description:
-    "Vendor directory with research-derived reliability ratings, confidence levels, and confidence-signal tags.",
-  alternates: {
-    canonical: "/vendors"
-  }
-};
+const PAGE_SIZE = 36;
 
 type PageProps = {
   searchParams: Promise<SearchParams | undefined>;
@@ -30,8 +22,8 @@ function uniqueSorted(values: string[]): string[] {
 }
 
 function buildVendorFilterHref(
-  filters: { q: string; minRating: number | null; ratingState: "all" | "rated" | "unrated"; reasonTag: string },
-  patch?: { reasonTag?: string; clearReasonTag?: boolean }
+  filters: { q: string; minRating: number | null; ratingState: "all" | "rated" | "unrated"; reasonTag: string; page: number },
+  patch?: { reasonTag?: string; clearReasonTag?: boolean; page?: number }
 ): string {
   const params = new URLSearchParams();
   if (filters.q) {
@@ -48,17 +40,32 @@ function buildVendorFilterHref(
   if (nextReasonTag) {
     params.set("reasonTag", nextReasonTag);
   }
+  const page = patch?.page ?? filters.page;
+  if (page > 1) {
+    params.set("page", String(page));
+  }
 
   const query = params.toString();
   return query ? `/vendors?${query}` : "/vendors";
 }
 
+function parsePage(searchParams?: SearchParams): number {
+  const raw = Array.isArray(searchParams?.page) ? searchParams?.page[0] : searchParams?.page;
+  const parsed = Number(raw ?? "");
+  return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : 1;
+}
+
 export default async function VendorsPage({ searchParams }: PageProps) {
   const resolvedSearchParams = await searchParams;
   const filters = parseVendorFilters(resolvedSearchParams);
+  const requestedPage = parsePage(resolvedSearchParams);
   const vendors = await listVendors();
   const filtered = filterVendors(vendors, filters);
-  const currentFilterPath = buildVendorFilterHref(filters);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const pageStart = (currentPage - 1) * PAGE_SIZE;
+  const pageItems = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+  const currentFilterPath = buildVendorFilterHref({ ...filters, page: currentPage });
   const reasonTagOptions = uniqueSorted(vendors.flatMap((vendor) => vendor.reasonTags));
   const structuredData = {
     "@context": "https://schema.org",
@@ -69,9 +76,9 @@ export default async function VendorsPage({ searchParams }: PageProps) {
     mainEntity: {
       "@type": "ItemList",
       numberOfItems: filtered.length,
-      itemListElement: filtered.slice(0, 100).map((vendor, index) => ({
+      itemListElement: pageItems.map((vendor, index) => ({
         "@type": "ListItem",
-        position: index + 1,
+        position: pageStart + index + 1,
         item: {
           "@type": "Organization",
           name: vendor.name,
@@ -100,6 +107,9 @@ export default async function VendorsPage({ searchParams }: PageProps) {
         <p className="muted">Ratings are research-derived and non-user-submitted.</p>
         <p className="muted">
           Showing <strong>{filtered.length}</strong> of <strong>{vendors.length}</strong> vendors.
+        </p>
+        <p className="muted">
+          Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>.
         </p>
       </section>
 
@@ -150,7 +160,7 @@ export default async function VendorsPage({ searchParams }: PageProps) {
           </p>
           <div>
             <Link
-              href={buildVendorFilterHref(filters, { clearReasonTag: true })}
+              href={buildVendorFilterHref({ ...filters, page: currentPage }, { clearReasonTag: true, page: 1 })}
               className={`chip chip-link ${filters.reasonTag ? "" : "active"}`}
             >
               All Tags
@@ -158,7 +168,7 @@ export default async function VendorsPage({ searchParams }: PageProps) {
             {reasonTagOptions.map((reasonTag) => (
               <Link
                 key={reasonTag}
-                href={buildVendorFilterHref(filters, { reasonTag })}
+                href={buildVendorFilterHref({ ...filters, page: currentPage }, { reasonTag, page: 1 })}
                 className={`chip chip-link ${filters.reasonTag === reasonTag.toLowerCase() ? "active" : ""}`}
               >
                 {labelFromSnake(reasonTag)}
@@ -169,7 +179,7 @@ export default async function VendorsPage({ searchParams }: PageProps) {
       </section>
 
       <div className="grid two">
-        {filtered.map((vendor) => (
+        {pageItems.map((vendor) => (
           <article key={vendor.slug} className="card" itemScope itemType="https://schema.org/Organization">
             <h2 itemProp="name">
               <Link href={`/vendors/${vendor.slug}?from=${encodeURIComponent(currentFilterPath)}`} itemProp="url">
@@ -186,7 +196,7 @@ export default async function VendorsPage({ searchParams }: PageProps) {
               {vendor.reasonTags.map((reasonTag) => (
                 <Link
                   key={`${vendor.slug}-${reasonTag}`}
-                  href={buildVendorFilterHref(filters, { reasonTag })}
+                  href={buildVendorFilterHref({ ...filters, page: currentPage }, { reasonTag, page: 1 })}
                   className={`chip chip-link ${filters.reasonTag === reasonTag.toLowerCase() ? "active" : ""}`}
                 >
                   {labelFromSnake(reasonTag)}
@@ -208,7 +218,60 @@ export default async function VendorsPage({ searchParams }: PageProps) {
         <section className="card">
           <p className="empty-state">No vendors matched these filters.</p>
         </section>
-      ) : null}
+      ) : (
+        <section className="card">
+          <div className="pagination-bar">
+            {currentPage > 1 ? (
+              <Link
+                className="btn"
+                href={buildVendorFilterHref({ ...filters, page: currentPage }, { page: currentPage - 1 })}
+              >
+                Previous
+              </Link>
+            ) : (
+              <span />
+            )}
+            <p className="muted">
+              Page {currentPage} of {totalPages}
+            </p>
+            {currentPage < totalPages ? (
+              <Link
+                className="btn"
+                href={buildVendorFilterHref({ ...filters, page: currentPage }, { page: currentPage + 1 })}
+              >
+                Next
+              </Link>
+            ) : (
+              <span />
+            )}
+          </div>
+        </section>
+      )}
     </div>
   );
+}
+
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const resolvedSearchParams = await searchParams;
+  const filters = parseVendorFilters(resolvedSearchParams);
+  const requestedPage = parsePage(resolvedSearchParams);
+  const hasFilter =
+    Boolean(filters.q) || filters.minRating !== null || filters.ratingState !== "all" || Boolean(filters.reasonTag) || requestedPage > 1;
+
+  return {
+    title: "Vendor Directory",
+    description:
+      "Vendor directory with research-derived reliability ratings, confidence levels, and confidence-signal tags.",
+    openGraph: {
+      type: "website",
+      url: absoluteUrl("/vendors"),
+      title: "Vendor Directory | PeptideDB",
+      description:
+        "Vendor directory with research-derived reliability ratings, confidence levels, and confidence-signal tags."
+    },
+    alternates: {
+      canonical: "/vendors"
+    },
+    robots: hasFilter ? { index: false, follow: true } : { index: true, follow: true }
+  };
 }
