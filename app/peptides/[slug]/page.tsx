@@ -25,6 +25,19 @@ const EVIDENCE_RANK: Record<PeptideSummary["evidenceGrade"], number> = {
   I: 4
 };
 
+const SECTION_ID = {
+  features: "features",
+  useCases: "use-cases",
+  effectiveness: "effectiveness",
+  dosing: "dosing",
+  safety: "safety",
+  vendors: "vendors",
+  longDescription: "long-description",
+  communitySignals: "community-signals",
+  evidence: "evidence-and-references",
+  related: "related-peptides"
+} as const;
+
 function statusLabel(value: string): string {
   if (value === "US_FDA_APPROVED") {
     return "FDA Approved";
@@ -212,21 +225,59 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
         </p>
       </section>
 
-      <section className="card">
-        <h2>Features</h2>
-        <table>
-          <tbody>
-            {Object.entries(peptide.featureTable).map(([k, v]) => (
-              <tr key={k}>
-                <th>{k}</th>
-                <td>{v}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <section className="card section-nav-card">
+        <h2>On This Page</h2>
+        <div className="section-nav-links">
+          <a href={`#${SECTION_ID.features}`} className="chip chip-link">
+            Features
+          </a>
+          <a href={`#${SECTION_ID.useCases}`} className="chip chip-link">
+            Use Cases
+          </a>
+          <a href={`#${SECTION_ID.effectiveness}`} className="chip chip-link">
+            Effectiveness
+          </a>
+          <a href={`#${SECTION_ID.dosing}`} className="chip chip-link">
+            Dosing
+          </a>
+          <a href={`#${SECTION_ID.safety}`} className="chip chip-link">
+            Safety
+          </a>
+          <a href={`#${SECTION_ID.vendors}`} className="chip chip-link">
+            Vendors
+          </a>
+          <a href={`#${SECTION_ID.longDescription}`} className="chip chip-link">
+            Long Description
+          </a>
+          <a href={`#${SECTION_ID.communitySignals}`} className="chip chip-link">
+            Community Signals
+          </a>
+          <a href={`#${SECTION_ID.evidence}`} className="chip chip-link">
+            Evidence
+          </a>
+          <a href={`#${SECTION_ID.related}`} className="chip chip-link">
+            Related
+          </a>
+        </div>
       </section>
 
-      <section className="card">
+      <section className="card" id={SECTION_ID.features}>
+        <h2>Features</h2>
+        <div className="table-scroll">
+          <table>
+            <tbody>
+              {Object.entries(peptide.featureTable).map(([k, v]) => (
+                <tr key={k}>
+                  <th>{k}</th>
+                  <td>{v}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="card" id={SECTION_ID.useCases}>
         <h2>Use Cases</h2>
         {peptide.useCases.map((useCase) => (
           <Link
@@ -239,40 +290,42 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
         ))}
       </section>
 
-      <section className="card">
+      <section className="card" id={SECTION_ID.effectiveness}>
         <h2>Effectiveness</h2>
         <p>{peptide.effectivenessSummary}</p>
       </section>
 
-      <section className="card">
+      <section className="card" id={SECTION_ID.dosing}>
         <h2>Dosing</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Context</th>
-              <th>Population</th>
-              <th>Route</th>
-              <th>Start</th>
-              <th>Maintenance</th>
-              <th>Frequency</th>
-            </tr>
-          </thead>
-          <tbody>
-            {peptide.dosing.map((dosing) => (
-              <tr key={`${dosing.context}-${dosing.population}`}>
-                <td>{statusLabel(dosing.context)}</td>
-                <td>{dosing.population}</td>
-                <td>{dosing.route}</td>
-                <td>{dosing.startingDose}</td>
-                <td>{dosing.maintenanceDose}</td>
-                <td>{dosing.frequency}</td>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Context</th>
+                <th>Population</th>
+                <th>Route</th>
+                <th>Start</th>
+                <th>Maintenance</th>
+                <th>Frequency</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {peptide.dosing.map((dosing) => (
+                <tr key={`${dosing.context}-${dosing.population}`}>
+                  <td>{statusLabel(dosing.context)}</td>
+                  <td>{dosing.population}</td>
+                  <td>{dosing.route}</td>
+                  <td>{dosing.startingDose}</td>
+                  <td>{dosing.maintenanceDose}</td>
+                  <td>{dosing.frequency}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
-      <section className="card">
+      <section className="card" id={SECTION_ID.safety}>
         <h2>Safety</h2>
         <div className="safety-grid">
           <article className="safety-item">
@@ -294,7 +347,7 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
         </div>
       </section>
 
-      <section className="card">
+      <section className="card" id={SECTION_ID.vendors}>
         <h2>Vendors</h2>
         <div className="grid two">
           {peptide.vendors.map((vendor) => (
@@ -334,7 +387,7 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
         </div>
       </section>
 
-      <section className="card">
+      <section className="card" id={SECTION_ID.longDescription}>
         <h2>Long Description</h2>
         {longDescriptionSections.length === 0 ? (
           <p itemProp="abstract">{peptide.longDescription}</p>
@@ -350,73 +403,77 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
         )}
       </section>
 
-      <section className="card">
+      <section className="card" id={SECTION_ID.communitySignals}>
         <h2>Community Signals</h2>
         {communityClaims.length === 0 ? (
           <p className="empty-state">No social/community signals are available for this peptide yet.</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Source</th>
-                <th>Summary</th>
-                <th>Evidence Grade</th>
-                <th>Link</th>
-              </tr>
-            </thead>
-            <tbody>
-              {communityClaims.map((claim, index) => (
-                <tr key={`community-${claim.sourceUrl}-${index}`}>
-                  <td>{claim.section}</td>
-                  <td>{claim.claimText}</td>
-                  <td>{claim.evidenceGrade ?? "N/A"}</td>
-                  <td>
-                    <a href={claim.sourceUrl} target="_blank" rel="noreferrer noopener">
-                      Open source
-                    </a>
-                  </td>
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Summary</th>
+                  <th>Evidence Grade</th>
+                  <th>Link</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {communityClaims.map((claim, index) => (
+                  <tr key={`community-${claim.sourceUrl}-${index}`}>
+                    <td>{claim.section}</td>
+                    <td>{claim.claimText}</td>
+                    <td>{claim.evidenceGrade ?? "N/A"}</td>
+                    <td>
+                      <a href={claim.sourceUrl} target="_blank" rel="noreferrer noopener">
+                        Open source
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
-      <section className="card">
+      <section className="card" id={SECTION_ID.evidence}>
         <h2>Evidence And References</h2>
         {nonCommunityClaims.length === 0 ? (
           <p className="empty-state">No curated citations have been added for this peptide yet.</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Section</th>
-                <th>Claim</th>
-                <th>Evidence Grade</th>
-                <th>Source</th>
-                <th>Published</th>
-              </tr>
-            </thead>
-            <tbody>
-              {nonCommunityClaims.map((claim, index) => (
-                <tr key={`${claim.sourceUrl}-${index}`}>
-                  <td>{claim.section}</td>
-                  <td>{claim.claimText}</td>
-                  <td>{claim.evidenceGrade ?? "N/A"}</td>
-                  <td>
-                    <a href={claim.sourceUrl} target="_blank" rel="noreferrer noopener">
-                      {claim.sourceTitle ?? "Open source"}
-                    </a>
-                  </td>
-                  <td>{formatDate(claim.publishedAt)}</td>
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Section</th>
+                  <th>Claim</th>
+                  <th>Evidence Grade</th>
+                  <th>Source</th>
+                  <th>Published</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {nonCommunityClaims.map((claim, index) => (
+                  <tr key={`${claim.sourceUrl}-${index}`}>
+                    <td>{claim.section}</td>
+                    <td>{claim.claimText}</td>
+                    <td>{claim.evidenceGrade ?? "N/A"}</td>
+                    <td>
+                      <a href={claim.sourceUrl} target="_blank" rel="noreferrer noopener">
+                        {claim.sourceTitle ?? "Open source"}
+                      </a>
+                    </td>
+                    <td>{formatDate(claim.publishedAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
-      <section className="card">
+      <section className="card" id={SECTION_ID.related}>
         <h2>More Peptides in Similar Categories</h2>
         {relatedByUseCase.length === 0 ? (
           <p className="empty-state">No same-category peptide matches are available yet.</p>

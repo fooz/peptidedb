@@ -100,6 +100,18 @@ function sortForPreview(peptides: PeptideSummary[]): PeptideSummary[] {
   });
 }
 
+function toDisplayName(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return value;
+  }
+  const hasUppercase = /[A-Z]/.test(trimmed);
+  if (hasUppercase) {
+    return trimmed;
+  }
+  return trimmed.replace(/\b[a-z]/g, (char) => char.toUpperCase());
+}
+
 function buildHealthGoalCards(peptides: PeptideSummary[]): HealthGoalCard[] {
   const useCaseSet = new Set(peptides.flatMap((peptide) => peptide.useCases));
 
@@ -138,6 +150,7 @@ export const metadata: Metadata = {
 export default async function HomePage() {
   const [peptides, vendors] = await Promise.all([listPeptides(), listVendors()]);
   const healthGoals = buildHealthGoalCards(peptides);
+  const uniqueUseCases = new Set(peptides.flatMap((peptide) => peptide.useCases));
   const featuredPeptides = uniqueBySlug(healthGoals.flatMap((goal) => goal.peptides)).slice(0, 8);
   const ratedVendors = vendors.filter((vendor) => vendor.rating !== null);
   const unratedVendors = vendors.filter((vendor) => vendor.rating === null);
@@ -170,11 +183,20 @@ export default async function HomePage() {
           (US/EU/UK/CA/AU), and research-based vendor reliability scoring.
         </p>
         <div className="meta-row" style={{ marginBottom: "0.9rem" }}>
-          <span className="kpi-pill">US and non-US status separation</span>
+          <span className="kpi-pill">US/EU/UK/CA/AU status badges</span>
           <span className="kpi-pill">Research-derived vendor ratings</span>
-          <span className="kpi-pill">Consumer text plus clinical section</span>
+          <span className="kpi-pill">Human-readable evidence links</span>
           <span className="kpi-pill">{peptides.length} published peptides</span>
         </div>
+        <form action="/peptides" method="get" className="home-search">
+          <label htmlFor="home-q">Search peptides</label>
+          <div className="home-search-row">
+            <input id="home-q" name="q" placeholder="Try: Ipamorelin, BPC-157, Semaglutide" />
+            <button type="submit" className="btn primary">
+              Search
+            </button>
+          </div>
+        </form>
         <div className="hero-actions">
           <Link className="btn primary" href="/peptides">
             Browse Peptides
@@ -183,6 +205,21 @@ export default async function HomePage() {
             Browse Vendors
           </Link>
         </div>
+      </section>
+
+      <section className="grid three">
+        <article className="card stat-card">
+          <h2>{peptides.length}</h2>
+          <p className="muted">Published peptide profiles</p>
+        </article>
+        <article className="card stat-card">
+          <h2>{uniqueUseCases.size}</h2>
+          <p className="muted">Use-case categories</p>
+        </article>
+        <article className="card stat-card">
+          <h2>{ratedVendors.length}</h2>
+          <p className="muted">Vendors with ratings</p>
+        </article>
       </section>
 
       <section className="card">
@@ -211,7 +248,7 @@ export default async function HomePage() {
                 ))}
               </div>
               <div className="home-link-list">
-                {goal.peptides.map((peptide) => {
+                {goal.peptides.slice(0, 3).map((peptide) => {
                   const sourceUseCase = goal.matchedUseCases.find((useCase) => peptide.useCases.includes(useCase)) ?? goal.primaryUseCase;
                   const returnTo = `/peptides?useCase=${encodeURIComponent(sourceUseCase)}`;
                   return (
@@ -220,7 +257,7 @@ export default async function HomePage() {
                       href={`/peptides/${peptide.slug}?from=${encodeURIComponent(returnTo)}`}
                       className="subtle-link"
                     >
-                      {peptide.name}
+                      {toDisplayName(peptide.name)}
                     </Link>
                   );
                 })}
@@ -244,7 +281,7 @@ export default async function HomePage() {
                 href={`/peptides/${peptide.slug}?from=${encodeURIComponent("/peptides")}`}
                 className="subtle-link"
               >
-                {peptide.name}
+                {toDisplayName(peptide.name)}
               </Link>
             ))}
           </div>

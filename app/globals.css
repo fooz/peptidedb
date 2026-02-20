@@ -232,6 +232,19 @@ a:hover {
   flex-wrap: wrap;
 }
 
+.home-search {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 0.8rem;
+}
+
+.home-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .overview-text {
   line-height: 1.6;
   max-width: 95ch;
@@ -319,6 +332,21 @@ a:hover {
 
 .grid.three {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.stat-card {
+  display: grid;
+  align-content: center;
+  gap: 0.2rem;
+}
+
+.stat-card h2 {
+  margin: 0;
+  font-size: clamp(1.45rem, 2.1vw, 1.85rem);
+}
+
+.stat-card p {
+  margin: 0;
 }
 
 .goal-grid {
@@ -477,6 +505,32 @@ td {
   text-align: left;
   padding: 0.58rem 0.42rem;
   vertical-align: top;
+}
+
+tbody tr:nth-child(even) td {
+  background: #fbfdff;
+}
+
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.table-scroll table {
+  min-width: 620px;
+}
+
+.table-scroll th,
+.table-scroll td {
+  border-left: 0;
+  border-right: 0;
+}
+
+.table-scroll tr:last-child td,
+.table-scroll tr:last-child th {
+  border-bottom: 0;
 }
 
 .empty-state {
@@ -665,6 +719,20 @@ td {
   gap: 0.7rem;
 }
 
+.section-nav-card h2 {
+  margin-bottom: 0.45rem;
+}
+
+.section-nav-links {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.card[id] {
+  scroll-margin-top: 6.5rem;
+}
+
 .auth-wrap {
   max-width: 560px;
   margin: 2rem auto 0;
@@ -718,5 +786,9 @@ td {
 
   .btn {
     width: auto;
+  }
+
+  .home-search-row {
+    grid-template-columns: 1fr;
   }
 }

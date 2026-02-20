@@ -77,7 +77,7 @@ export default function RootLayout({
         <main className="container site-main">{children}</main>
         <footer className="site-footer">
           <div className="container footer-inner">
-            <p className="muted">© {new Date().getFullYear()} PeptideDB</p>
+            <p className="muted">© PeptideDB</p>
             <nav className="footer-links" aria-label="Footer">
               <Link href="/disclaimer">Disclaimer</Link>
               <Link href="/privacy-policy">Privacy Policy</Link>
