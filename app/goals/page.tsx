@@ -81,7 +81,7 @@ export default async function GoalsIndexPage() {
               {goal.peptides.map((peptide) => (
                 <Link
                   key={`${goal.slug}-${peptide.slug}`}
-                  href={`/peptides/${peptide.slug}?from=${encodeURIComponent(`/goals/${goal.slug}`)}`}
+                  href={`/peptides/${peptide.slug}`}
                   className="subtle-link"
                 >
                   {capitalizeLeadingLetter(peptide.name)}

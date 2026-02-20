@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
+import { NavigationMemory } from "@/app/components/navigation-memory";
 import { absoluteUrl, getSiteUrl, safeJsonLd } from "@/lib/seo";
 import "./globals.css";
 
@@ -59,6 +61,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <Suspense fallback={null}>
+          <NavigationMemory />
+        </Suspense>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(structuredData) }} />
         <header className="site-header">
           <div className="container">

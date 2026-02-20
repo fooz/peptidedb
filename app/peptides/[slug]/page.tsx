@@ -1,22 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Breadcrumbs } from "@/app/components/breadcrumbs";
+import { ContextualBreadcrumbs } from "@/app/components/contextual-breadcrumbs";
 import { StarRating } from "@/app/components/star-rating";
 import { labelFromSnake } from "@/lib/constants";
 import { capitalizeLeadingLetter } from "@/lib/display-format";
 import { getPeptideDetail, listPeptides } from "@/lib/repository";
 import { absoluteUrl, safeJsonLd } from "@/lib/seo";
 import type { PeptideSummary } from "@/lib/types";
-import { sanitizeInternalPath } from "@/lib/url-security";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined> | undefined>;
 };
-
-type SearchValue = string | string[] | undefined;
-type SearchParams = Record<string, SearchValue>;
 
 const EVIDENCE_RANK: Record<PeptideSummary["evidenceGrade"], number> = {
   A: 0,
@@ -77,13 +72,6 @@ function latestReviewDate(claims: { publishedAt: string; retrievedAt: string | n
   return latest.toISOString();
 }
 
-function asSingle(value: SearchValue): string {
-  if (Array.isArray(value)) {
-    return value[0]?.trim() ?? "";
-  }
-  return value?.trim() ?? "";
-}
-
 function combineOverview(intro: string, mechanism: string): string {
   const introText = intro.trim();
   const mechanismText = mechanism.trim();
@@ -115,25 +103,6 @@ function parseLongDescriptionSections(value: string): Array<{ title: string | nu
       };
     })
     .filter((section) => Boolean(section.body));
-}
-
-function breadcrumbLabelForFromPath(fromPath: string | null): string {
-  if (!fromPath) {
-    return "Peptides";
-  }
-  if (fromPath.startsWith("/peptides?")) {
-    return "Search Results";
-  }
-  if (fromPath.startsWith("/peptides")) {
-    return "Peptides";
-  }
-  if (fromPath.startsWith("/vendors")) {
-    return "Vendors";
-  }
-  if (fromPath.startsWith("/goals")) {
-    return "Health Goals";
-  }
-  return "Browse";
 }
 
 function sortByEvidenceThenName(peptides: PeptideSummary[]): PeptideSummary[] {
@@ -171,12 +140,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function PeptideDetailPage({ params, searchParams }: PageProps) {
+export default async function PeptideDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const resolvedSearchParams = (await searchParams) as SearchParams | undefined;
-  const fromPath = sanitizeInternalPath(asSingle(resolvedSearchParams?.from), ["/peptides", "/vendors", "/goals"]);
-  const backPath = fromPath ?? "/peptides";
-  const backLabel = breadcrumbLabelForFromPath(fromPath);
 
   const [peptide, allPeptides] = await Promise.all([getPeptideDetail(slug), listPeptides()]);
 
@@ -233,7 +198,7 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
   return (
     <article className="grid" itemScope itemType="https://schema.org/MedicalEntity">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(structuredData) }} />
-      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: backLabel, href: backPath }, { label: displayName }]} />
+      <ContextualBreadcrumbs currentLabel={displayName} kind="peptide" />
       <section className="card hero">
         <h1 itemProp="name">{displayName}</h1>
         <div className="meta-row">
@@ -423,7 +388,7 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
           {peptide.vendors.map((vendor) => (
             <article className="card" key={vendor.slug} itemScope itemType="https://schema.org/Organization">
               <h3 itemProp="name">
-                <Link href={`/vendors/${vendor.slug}?from=${encodeURIComponent(`/peptides/${peptide.slug}`)}`} itemProp="url">
+                <Link href={`/vendors/${vendor.slug}`} itemProp="url">
                   {vendor.name}
                 </Link>
               </h3>
@@ -556,11 +521,10 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
                 </h3>
                 <div className="home-link-list">
                   {group.relatedPeptides.map((relatedPeptide) => {
-                    const returnTo = `/peptides?useCase=${encodeURIComponent(group.useCase)}`;
                     return (
                       <Link
                         key={`${group.useCase}-${relatedPeptide.slug}`}
-                        href={`/peptides/${relatedPeptide.slug}?from=${encodeURIComponent(returnTo)}`}
+                        href={`/peptides/${relatedPeptide.slug}`}
                         className="subtle-link"
                       >
                         {capitalizeLeadingLetter(relatedPeptide.name)}

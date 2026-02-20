@@ -134,12 +134,10 @@ export default async function HomePage() {
               </div>
               <div className="home-link-list">
                 {goal.peptides.slice(0, 3).map((peptide) => {
-                  const sourceUseCase = goal.matchedUseCases.find((useCase) => peptide.useCases.includes(useCase)) ?? goal.primaryUseCase;
-                  const returnTo = `/peptides?useCase=${encodeURIComponent(sourceUseCase)}`;
                   return (
                     <Link
                       key={`${goal.slug}-${peptide.slug}`}
-                      href={`/peptides/${peptide.slug}?from=${encodeURIComponent(returnTo)}`}
+                      href={`/peptides/${peptide.slug}`}
                       className="subtle-link"
                     >
                       {capitalizeLeadingLetter(peptide.name)}
@@ -166,7 +164,7 @@ export default async function HomePage() {
             {featuredPeptides.map((peptide) => (
               <Link
                 key={peptide.slug}
-                href={`/peptides/${peptide.slug}?from=${encodeURIComponent("/peptides")}`}
+                href={`/peptides/${peptide.slug}`}
                 className="subtle-link"
               >
                 {capitalizeLeadingLetter(peptide.name)}

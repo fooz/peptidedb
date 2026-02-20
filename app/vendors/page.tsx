@@ -65,7 +65,6 @@ export default async function VendorsPage({ searchParams }: PageProps) {
   const currentPage = Math.min(requestedPage, totalPages);
   const pageStart = (currentPage - 1) * PAGE_SIZE;
   const pageItems = filtered.slice(pageStart, pageStart + PAGE_SIZE);
-  const currentFilterPath = buildVendorFilterHref({ ...filters, page: currentPage });
   const reasonTagOptions = uniqueSorted(vendors.flatMap((vendor) => vendor.reasonTags));
   const structuredData = {
     "@context": "https://schema.org",
@@ -182,7 +181,7 @@ export default async function VendorsPage({ searchParams }: PageProps) {
         {pageItems.map((vendor) => (
           <article key={vendor.slug} className="card" itemScope itemType="https://schema.org/Organization">
             <h2 itemProp="name">
-              <Link href={`/vendors/${vendor.slug}?from=${encodeURIComponent(currentFilterPath)}`} itemProp="url">
+              <Link href={`/vendors/${vendor.slug}`} itemProp="url">
                 {vendor.name}
               </Link>
             </h2>

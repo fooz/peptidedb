@@ -72,7 +72,6 @@ export default async function PeptidesPage({ searchParams }: PageProps) {
   const currentPage = Math.min(requestedPage, totalPages);
   const pageStart = (currentPage - 1) * PAGE_SIZE;
   const pageItems = filtered.slice(pageStart, pageStart + PAGE_SIZE);
-  const currentFilterPath = buildCurrentFilterPath({ ...filters, page: currentPage });
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
@@ -193,7 +192,7 @@ export default async function PeptidesPage({ searchParams }: PageProps) {
       {pageItems.map((peptide) => (
         <article key={peptide.slug} className="card" itemScope itemType="https://schema.org/MedicalEntity">
           <h2>
-            <Link href={`/peptides/${peptide.slug}?from=${encodeURIComponent(currentFilterPath)}`} itemProp="url">
+            <Link href={`/peptides/${peptide.slug}`} itemProp="url">
               <span itemProp="name">{capitalizeLeadingLetter(peptide.name)}</span>
             </Link>
           </h2>

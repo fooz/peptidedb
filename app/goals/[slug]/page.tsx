@@ -136,7 +136,7 @@ export default async function GoalDetailPage({ params }: PageProps) {
           {topEvidencePeptides.map((peptide) => (
             <article key={peptide.slug} className="card">
               <h3>
-                <Link href={`/peptides/${peptide.slug}?from=${encodeURIComponent(`/goals/${goalCard.slug}`)}`}>
+                <Link href={`/peptides/${peptide.slug}`}>
                   {capitalizeLeadingLetter(peptide.name)}
                 </Link>
               </h3>
