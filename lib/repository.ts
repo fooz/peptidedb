@@ -98,14 +98,14 @@ function sentimentLabelFromScore(
   if (score === null) {
     return null;
   }
-  if (score >= 0.24) {
+  if (score >= 0.16) {
     return "positive";
   }
-  if (score <= -0.24) {
+  if (score <= -0.22) {
     return "negative";
   }
-  if (Math.abs(score) < 0.1) {
-    return "neutral";
+  if (score >= 0) {
+    return "positive";
   }
   return "mixed";
 }

@@ -35,6 +35,14 @@ function firstNonEmpty(...values) {
   return "";
 }
 
+function hostEquals(hostname, expected) {
+  return hostname === expected || hostname === `www.${expected}`;
+}
+
+function hostMatches(hostname, expected) {
+  return hostEquals(hostname, expected) || hostname.endsWith(`.${expected}`);
+}
+
 function buildClinicalTrialsSearchUrl(term) {
   const normalized = term.trim();
   return normalized ? `https://clinicaltrials.gov/search?term=${encodeURIComponent(normalized)}` : "https://clinicaltrials.gov/";
@@ -84,12 +92,12 @@ function toHumanReadableSourceUrl(rawUrl) {
   const host = parsed.hostname.toLowerCase();
   const path = parsed.pathname.toLowerCase();
 
-  if ((host === "clinicaltrials.gov" || host === "www.clinicaltrials.gov") && path.startsWith("/api/v2/studies")) {
+  if (hostEquals(host, "clinicaltrials.gov") && path.startsWith("/api/v2/studies")) {
     const term = firstNonEmpty(parsed.searchParams.get("query.term"), parsed.searchParams.get("query.cond"));
     return buildClinicalTrialsSearchUrl(term);
   }
 
-  if ((host === "eutils.ncbi.nlm.nih.gov" || host === "www.eutils.ncbi.nlm.nih.gov") && path.includes("/entrez/eutils/")) {
+  if (hostEquals(host, "eutils.ncbi.nlm.nih.gov") && path.includes("/entrez/eutils/")) {
     const db = (parsed.searchParams.get("db") || "").toLowerCase();
     if (db === "pubmed") {
       const id = firstNonEmpty(parsed.searchParams.get("id"));
@@ -102,7 +110,7 @@ function toHumanReadableSourceUrl(rawUrl) {
     return "https://www.ncbi.nlm.nih.gov/";
   }
 
-  if ((host === "api.fda.gov" || host === "www.api.fda.gov") && path === "/drug/label.json") {
+  if (hostEquals(host, "api.fda.gov") && path === "/drug/label.json") {
     const search = firstNonEmpty(parsed.searchParams.get("search"));
     const term = extractQuotedToken(search);
     return buildFdaDrugLabelSearchUrl(term);
@@ -119,11 +127,30 @@ function toHumanReadableSourceUrl(rawUrl) {
     }
   }
 
-  if ((host === "pubchem.ncbi.nlm.nih.gov" || host === "www.pubchem.ncbi.nlm.nih.gov") && path.includes("/rest/")) {
+  if (hostEquals(host, "pubchem.ncbi.nlm.nih.gov") && path.includes("/rest/")) {
     const cid = parsed.pathname.match(/\/compound\/(?:cid\/)?(\d+)/i)?.[1];
     if (cid) {
       return buildPubChemCompoundUrl(cid);
     }
+  }
+
+  if (hostMatches(host, "reddit.com")) {
+    if (path.endsWith(".json")) {
+      parsed.pathname = parsed.pathname.replace(/\.json$/i, "");
+      if (parsed.pathname.endsWith("/search")) {
+        parsed.pathname = `${parsed.pathname}/`;
+      }
+      return parsed.toString();
+    }
+    return parsed.toString();
+  }
+
+  if (hostEquals(host, "hn.algolia.com") && path.startsWith("/api/v1/")) {
+    const query = firstNonEmpty(parsed.searchParams.get("query"));
+    if (!query) {
+      return "https://hn.algolia.com/";
+    }
+    return `https://hn.algolia.com/?query=${encodeURIComponent(query)}&sort=byDate&type=story`;
   }
 
   return parsed.toString();

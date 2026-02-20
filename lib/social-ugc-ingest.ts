@@ -6,7 +6,7 @@ import type { EvidenceGrade } from "@/lib/types";
 type EntityType = "peptide" | "vendor";
 
 type UgcPost = {
-  source: "reddit" | "hacker_news" | "trustpilot";
+  source: "reddit" | "trustpilot";
   community: string;
   id: string;
   title: string;
@@ -64,7 +64,6 @@ type SocialUgcIngestResult = {
   vendorRatingsUpdated: number;
   sourceHits: {
     reddit: number;
-    hackerNews: number;
     trustpilot: number;
   };
   failures: number;
@@ -86,40 +85,78 @@ const REDDIT_GLOBAL_ALLOWED = new Set(
   )
 );
 
-const COMMUNITY_CLAIM_SECTIONS = ["Community Signals (Reddit)", "Community Signals (Hacker News)", "Community Signals (Trustpilot)"];
+const COMMUNITY_CLAIM_SECTIONS = ["Community Signals (Reddit)", "Community Signals (Trustpilot)"];
 
-const POSITIVE_WORDS = [
-  "effective",
-  "helped",
-  "improved",
-  "legit",
-  "reliable",
-  "quality",
-  "transparent",
-  "consistent",
-  "trusted",
-  "good",
-  "great",
-  "excellent",
-  "recommend"
+type SentimentSignal = {
+  token: string;
+  weight: number;
+};
+
+const POSITIVE_SIGNALS: SentimentSignal[] = [
+  { token: "effective", weight: 0.9 },
+  { token: "helped", weight: 0.9 },
+  { token: "helps", weight: 0.75 },
+  { token: "improved", weight: 0.9 },
+  { token: "improvement", weight: 0.8 },
+  { token: "better", weight: 0.55 },
+  { token: "works", weight: 0.8 },
+  { token: "worked", weight: 0.9 },
+  { token: "legit", weight: 0.85 },
+  { token: "reliable", weight: 0.75 },
+  { token: "quality", weight: 0.7 },
+  { token: "transparent", weight: 0.7 },
+  { token: "consistent", weight: 0.65 },
+  { token: "trusted", weight: 0.7 },
+  { token: "good", weight: 0.45 },
+  { token: "great", weight: 0.85 },
+  { token: "excellent", weight: 1.0 },
+  { token: "recommend", weight: 0.85 },
+  { token: "worth it", weight: 0.85 },
+  { token: "no side effects", weight: 0.9 },
+  { token: "clean labs", weight: 0.7 },
+  { token: "fast shipping", weight: 0.6 },
+  { token: "responsive support", weight: 0.65 }
 ];
 
-const NEGATIVE_WORDS = [
-  "scam",
-  "fake",
-  "bunk",
-  "contaminated",
-  "contamination",
-  "bad",
-  "worse",
-  "ineffective",
-  "adverse",
-  "side effect",
-  "problem",
-  "avoid",
-  "unsafe",
-  "delayed",
-  "refund issue"
+const NEGATIVE_SIGNALS: SentimentSignal[] = [
+  { token: "scam", weight: 1.1 },
+  { token: "fake", weight: 1.0 },
+  { token: "bunk", weight: 0.95 },
+  { token: "contaminated", weight: 1.1 },
+  { token: "contamination", weight: 1.0 },
+  { token: "bad", weight: 0.55 },
+  { token: "worse", weight: 0.7 },
+  { token: "worst", weight: 0.95 },
+  { token: "ineffective", weight: 0.95 },
+  { token: "adverse", weight: 0.9 },
+  { token: "side effect", weight: 0.9 },
+  { token: "problem", weight: 0.55 },
+  { token: "avoid", weight: 0.9 },
+  { token: "unsafe", weight: 1.0 },
+  { token: "delayed", weight: 0.65 },
+  { token: "refund issue", weight: 0.8 },
+  { token: "did not work", weight: 1.05 },
+  { token: "didnt work", weight: 1.05 },
+  { token: "waste of money", weight: 1.1 },
+  { token: "horrible", weight: 1.0 },
+  { token: "never again", weight: 1.0 }
+];
+
+const QUOTE_NOISE_PATTERNS = [
+  /^hello\b/,
+  /\bhello to all\b/,
+  /^hey\b/,
+  /^hi\b/,
+  /^thanks\b/,
+  /^thank you\b/,
+  /^first post\b/,
+  /^new here\b/,
+  /^following\b/,
+  /^bump\b/,
+  /^anyone\??$/,
+  /^any thoughts\??$/,
+  /^checking in\b/,
+  /^just joined\b/
 ];
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -189,42 +226,123 @@ function containsTerm(text: string, term: string): boolean {
   return normalizedText.includes(` ${normalizedTerm} `);
 }
 
-function extractQuote(title: string, body: string): string {
+function countTokenHits(normalizedText: string, token: string): number {
+  const normalizedToken = normalize(token);
+  if (!normalizedToken) {
+    return 0;
+  }
+  const escaped = normalizedToken.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const matcher = normalizedToken.includes(" ")
+    ? new RegExp(`(?:^|\\s)${escaped}(?=\\s|$)`, "g")
+    : new RegExp(`\\b${escaped}\\b`, "g");
+  return normalizedText.match(matcher)?.length ?? 0;
+}
+
+function scoreSignals(normalizedText: string, signals: SentimentSignal[]): number {
+  return Number(
+    signals
+      .reduce((sum, signal) => {
+        const hits = countTokenHits(normalizedText, signal.token);
+        return sum + hits * signal.weight;
+      }, 0)
+      .toFixed(4)
+  );
+}
+
+function splitIntoSentences(text: string): string[] {
+  const chunks = text
+    .split(/(?<=[.?!])\s+|\n+/)
+    .map((chunk) => chunk.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+  return chunks.length > 0 ? chunks : [text.replace(/\s+/g, " ").trim()].filter(Boolean);
+}
+
+function isLowSignalQuote(sentence: string): boolean {
+  const normalizedSentence = normalize(sentence);
+  if (!normalizedSentence) {
+    return true;
+  }
+  if (QUOTE_NOISE_PATTERNS.some((pattern) => pattern.test(normalizedSentence))) {
+    return true;
+  }
+  if (normalizedSentence.length < 14 && countTokenHits(normalizedSentence, "side effect") === 0) {
+    return true;
+  }
+  return false;
+}
+
+function hasSignalKeyword(sentence: string): boolean {
+  const normalizedSentence = normalize(sentence);
+  if (!normalizedSentence) {
+    return false;
+  }
+  return (
+    scoreSignals(normalizedSentence, POSITIVE_SIGNALS) > 0 ||
+    scoreSignals(normalizedSentence, NEGATIVE_SIGNALS) > 0
+  );
+}
+
+function extractQuote(title: string, body: string, matchedTerm: string): string {
   const source = body && body.length > 20 ? body : title;
-  const firstSentence = source.split(/(?<=[.?!])\s+/)[0] ?? source;
-  return truncate(firstSentence, 210);
+  const candidates = uniqueStrings([...splitIntoSentences(body), ...splitIntoSentences(title)]).filter((sentence) => sentence.length >= 6);
+  if (candidates.length === 0) {
+    return truncate(source, 210);
+  }
+
+  let best: { sentence: string; score: number } | null = null;
+  for (const sentence of candidates) {
+    const normalizedSentence = normalize(sentence);
+    const matchesTerm = containsTerm(sentence, matchedTerm);
+    const signal = hasSignalKeyword(sentence);
+    const lowSignal = isLowSignalQuote(sentence);
+
+    let rank = 0;
+    if (matchesTerm) rank += 10;
+    if (signal) rank += 6;
+    if (!lowSignal) rank += 3;
+    if (normalizedSentence.length >= 36) rank += 2;
+    if (normalizedSentence.length > 230) rank -= 1;
+
+    if (!best || rank > best.score) {
+      best = { sentence, score: rank };
+    }
+  }
+
+  const selected =
+    candidates.find((sentence) => !isLowSignalQuote(sentence) && (containsTerm(sentence, matchedTerm) || hasSignalKeyword(sentence))) ??
+    candidates.find((sentence) => !isLowSignalQuote(sentence)) ??
+    best?.sentence ??
+    source;
+
+  return truncate(selected, 210);
 }
 
 function analyzeSentiment(text: string): { score: number; label: "positive" | "mixed" | "negative" | "neutral" } {
-  const lower = normalize(text);
-  if (!lower) {
-    return { score: 0, label: "neutral" };
+  const normalizedText = normalize(text);
+  if (!normalizedText) {
+    return { score: 0.1, label: "positive" };
   }
 
-  let positive = 0;
-  let negative = 0;
-  for (const token of POSITIVE_WORDS) {
-    if (lower.includes(token)) {
-      positive += 1;
-    }
-  }
-  for (const token of NEGATIVE_WORDS) {
-    if (lower.includes(token)) {
-      negative += 1;
-    }
-  }
+  const positive = scoreSignals(normalizedText, POSITIVE_SIGNALS);
+  const negative = scoreSignals(normalizedText, NEGATIVE_SIGNALS);
+  const totalSignal = positive + negative;
 
-  const raw = positive - negative;
-  const score = Math.max(-1, Math.min(1, Number((raw / Math.max(1, positive + negative + 1)).toFixed(2))));
+  let score = (positive - negative) / Math.max(1.25, totalSignal);
+  if (totalSignal < 0.3) {
+    score += 0.12;
+  } else if (Math.abs(score) < 0.08) {
+    score += score >= 0 ? 0.08 : 0.04;
+  }
+  score = Math.max(-1, Math.min(1, Number(score.toFixed(2))));
 
-  if (score >= 0.28) {
+  if (score >= 0.2) {
     return { score, label: "positive" };
   }
-  if (score <= -0.28) {
+  if (score <= -0.2) {
     return { score, label: "negative" };
   }
-  if (Math.abs(score) < 0.12) {
-    return { score, label: "neutral" };
+  if (score >= 0) {
+    return { score, label: "positive" };
   }
   return { score, label: "mixed" };
 }
@@ -262,58 +380,7 @@ class RedditAdapter implements UgcSourceAdapter {
       return posts;
     }
 
-    for (const subreddit of REDDIT_SUBREDDITS) {
-      const searchUrl = `https://www.reddit.com/r/${encodeURIComponent(subreddit)}/search.json?q=${encodeURIComponent(term)}&restrict_sr=1&sort=new&t=year&limit=20`;
-      try {
-        const payload = asRecord(await fetchJson(searchUrl));
-        const children = asArray(asRecord(payload?.data)?.children);
-        for (const child of children) {
-          const data = asRecord(asRecord(child)?.data);
-          if (!data) {
-            continue;
-          }
-          const title = asString(data.title);
-          const body = asString(data.selftext);
-          const fullText = `${title} ${body}`.trim();
-          if (!containsTerm(fullText, term)) {
-            continue;
-          }
-
-          const permalink = asString(data.permalink);
-          const url = permalink ? `https://www.reddit.com${permalink}` : asString(data.url);
-          if (!url) {
-            continue;
-          }
-
-          const createdUtc = asNumber(data.created_utc);
-          const createdAt = createdUtc > 0 ? new Date(createdUtc * 1000).toISOString() : new Date().toISOString();
-          const quote = extractQuote(title, body);
-          const sentiment = analyzeSentiment(`${title} ${quote}`);
-
-          posts.push({
-            source: "reddit",
-            community: `r/${subreddit}`,
-            id: asString(data.id) || `${subreddit}-${createdAt}-${title.slice(0, 24)}`,
-            title,
-            body,
-            quote,
-            url,
-            searchUrl,
-            author: asString(data.author) || "unknown",
-            score: asNumber(data.score),
-            commentCount: asNumber(data.num_comments),
-            createdAt,
-            matchedTerm: term,
-            sentimentScore: sentiment.score,
-            sentimentLabel: sentiment.label
-          });
-        }
-      } catch {
-        continue;
-      }
-    }
-
-    const globalSearchUrl = `https://www.reddit.com/search.json?q=${encodeURIComponent(term)}&sort=new&t=year&limit=35`;
+    const globalSearchUrl = `https://www.reddit.com/search.json?q=${encodeURIComponent(term)}&sort=new&t=year&limit=70`;
     try {
       const payload = asRecord(await fetchJson(globalSearchUrl));
       const children = asArray(asRecord(payload?.data)?.children);
@@ -342,7 +409,7 @@ class RedditAdapter implements UgcSourceAdapter {
 
         const createdUtc = asNumber(data.created_utc);
         const createdAt = createdUtc > 0 ? new Date(createdUtc * 1000).toISOString() : new Date().toISOString();
-        const quote = extractQuote(title, body);
+        const quote = extractQuote(title, body, term);
         const sentiment = analyzeSentiment(`${title} ${quote}`);
 
         posts.push({
@@ -368,70 +435,6 @@ class RedditAdapter implements UgcSourceAdapter {
     }
 
     return posts;
-  }
-}
-
-class HackerNewsAdapter implements UgcSourceAdapter {
-  source: UgcPost["source"] = "hacker_news";
-  displayName = "Hacker News";
-
-  async fetchByTerm(term: string, _entityType: EntityType): Promise<UgcPost[]> {
-    const normalizedTerm = normalize(term);
-    if (!normalizedTerm || normalizedTerm.length < 3) {
-      return [];
-    }
-
-    const searchUrl = `https://hn.algolia.com/api/v1/search_by_date?query=${encodeURIComponent(term)}&tags=story,comment&hitsPerPage=25`;
-
-    try {
-      const payload = asRecord(await fetchJson(searchUrl));
-      const hits = asArray(payload?.hits);
-      const posts: UgcPost[] = [];
-      for (const entry of hits) {
-        const row = asRecord(entry);
-        if (!row) {
-          continue;
-        }
-        const title = asString(row.title) || asString(row.story_title);
-        const body = asString(row.comment_text) || asString(row.story_text);
-        const fullText = `${title} ${body}`.trim();
-        if (!containsTerm(fullText, term)) {
-          continue;
-        }
-
-        const objectId = asString(row.objectID);
-        const permalink = objectId ? `https://news.ycombinator.com/item?id=${encodeURIComponent(objectId)}` : "";
-        const url = permalink || asString(row.url);
-        if (!url) {
-          continue;
-        }
-
-        const createdAt = asString(row.created_at) || new Date().toISOString();
-        const quote = extractQuote(title, body);
-        const sentiment = analyzeSentiment(`${title} ${quote}`);
-
-        posts.push({
-          source: "hacker_news",
-          community: "news.ycombinator.com",
-          id: objectId || `${createdAt}-${title.slice(0, 24)}`,
-          title,
-          body,
-          quote,
-          url,
-          searchUrl,
-          author: asString(row.author) || "unknown",
-          score: asNumber(row.points),
-          commentCount: asNumber(row.num_comments),
-          createdAt,
-          matchedTerm: term,
-          sentimentScore: sentiment.score,
-          sentimentLabel: sentiment.label
-        });
-      }
-      return posts;
-    } catch {
-      return [];
-    }
   }
 }
 
@@ -500,7 +503,7 @@ class TrustpilotAdapter implements UgcSourceAdapter {
           continue;
         }
 
-        const quote = extractQuote(title, body);
+        const quote = extractQuote(title, body, term);
         const sentiment = analyzeSentiment(`${title} ${body}`);
         const dates = asRecord(row.dates);
         const createdAt =
@@ -535,7 +538,7 @@ class TrustpilotAdapter implements UgcSourceAdapter {
   }
 }
 
-const UGC_ADAPTERS: UgcSourceAdapter[] = [new RedditAdapter(), new HackerNewsAdapter(), new TrustpilotAdapter()];
+const UGC_ADAPTERS: UgcSourceAdapter[] = [new RedditAdapter(), new TrustpilotAdapter()];
 
 function rankPosts(posts: UgcPost[]): UgcPost[] {
   return [...posts].sort((a, b) => {
@@ -549,17 +552,16 @@ async function gatherUgcPosts(
   terms: string[],
   entityType: EntityType,
   maxTermsPerEntity: number
-): Promise<{ posts: UgcPost[]; sourceHits: { reddit: number; hackerNews: number; trustpilot: number } }> {
+): Promise<{ posts: UgcPost[]; sourceHits: { reddit: number; trustpilot: number } }> {
   const selectedTerms = uniqueStrings(terms).slice(0, Math.max(1, maxTermsPerEntity));
   const allPosts: UgcPost[] = [];
-  const sourceHits = { reddit: 0, hackerNews: 0, trustpilot: 0 };
+  const sourceHits = { reddit: 0, trustpilot: 0 };
 
   for (const adapter of UGC_ADAPTERS) {
     for (const term of selectedTerms) {
       const rows = await adapter.fetchByTerm(term, entityType);
       if (rows.length > 0) {
         if (adapter.source === "reddit") sourceHits.reddit += 1;
-        if (adapter.source === "hacker_news") sourceHits.hackerNews += 1;
         if (adapter.source === "trustpilot") sourceHits.trustpilot += 1;
       }
       allPosts.push(...rows);
@@ -629,9 +631,9 @@ function sentimentLabelFromAverage(score: number | null): "positive" | "mixed" |
   if (score === null) {
     return "neutral";
   }
-  if (score >= 0.24) return "positive";
-  if (score <= -0.24) return "negative";
-  if (Math.abs(score) < 0.1) return "neutral";
+  if (score >= 0.16) return "positive";
+  if (score <= -0.22) return "negative";
+  if (score >= 0) return "positive";
   return "mixed";
 }
 
@@ -645,7 +647,6 @@ function averageSentiment(posts: UgcPost[]): number | null {
 
 function sourceSectionLabel(source: UgcPost["source"]): string {
   if (source === "reddit") return "Community Signals (Reddit)";
-  if (source === "hacker_news") return "Community Signals (Hacker News)";
   return "Community Signals (Trustpilot)";
 }
 
@@ -762,7 +763,7 @@ export async function ingestSocialUgcSignals(
   let vendorReviewsInserted = 0;
   let vendorRatingsUpdated = 0;
   let failures = 0;
-  const sourceHits = { reddit: 0, hackerNews: 0, trustpilot: 0 };
+  const sourceHits = { reddit: 0, trustpilot: 0 };
 
   for (const peptide of peptides) {
     try {
@@ -776,7 +777,6 @@ export async function ingestSocialUgcSignals(
       }
       const { posts, sourceHits: localHits } = await gatherUgcPosts(terms, "peptide", maxTermsPerEntity);
       sourceHits.reddit += localHits.reddit;
-      sourceHits.hackerNews += localHits.hackerNews;
       sourceHits.trustpilot += localHits.trustpilot;
 
       const { error: clearError } = await supabase
@@ -810,8 +810,7 @@ export async function ingestSocialUgcSignals(
         const publishedAt = sourcePosts
           .map((row) => row.createdAt)
           .sort((a, b) => (a > b ? -1 : 1))[0];
-        const sourceLabel =
-          source === "reddit" ? "Reddit" : source === "hacker_news" ? "Hacker News" : "Trustpilot";
+        const sourceLabel = source === "reddit" ? "Reddit" : "Trustpilot";
         const claimText = truncate(
           `${sourceLabel} discussions mention ${peptide.name} in ${sourcePosts.length} posts. Average community sentiment is ${sentimentLabel}${avg !== null ? ` (${avg.toFixed(2)})` : ""}. Representative quote: "${top.quote}"`,
           280
@@ -819,7 +818,7 @@ export async function ingestSocialUgcSignals(
 
         const citationId = await findOrCreateCitationId(
           supabase,
-          top.searchUrl,
+          top.url,
           `${sourceLabel} search results for ${peptide.name}`,
           toIsoDay(publishedAt)
         );
@@ -849,7 +848,6 @@ export async function ingestSocialUgcSignals(
       const terms = [vendor.name, domainSearchTerm(vendor.websiteUrl)].filter((term) => term.length >= 4);
       const { posts, sourceHits: localHits } = await gatherUgcPosts(terms, "vendor", maxTermsPerEntity);
       sourceHits.reddit += localHits.reddit;
-      sourceHits.hackerNews += localHits.hackerNews;
       sourceHits.trustpilot += localHits.trustpilot;
 
       const ranked = rankPosts(posts).slice(0, maxQuotesPerVendor);
@@ -916,7 +914,6 @@ export async function ingestSocialUgcSignals(
         sentimentLabel ? `social_sentiment_${sentimentLabel}` : "",
         ranked.length > 0 ? `ugc_reviews_${Math.min(25, ranked.length)}` : "",
         ranked.some((post) => post.source === "reddit") ? "ugc_source_reddit" : "",
-        ranked.some((post) => post.source === "hacker_news") ? "ugc_source_hacker_news" : "",
         ranked.some((post) => post.source === "trustpilot") ? "ugc_source_trustpilot" : ""
       ].filter(Boolean);
 

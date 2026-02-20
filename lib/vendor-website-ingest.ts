@@ -418,14 +418,35 @@ export function computeVendorScore(
   }
 
   const trustPoints = trustSignals.reduce((sum, signal) => sum + (TRUST_SIGNAL_WEIGHT[signal] ?? 0.3), 0);
-  const listingScore = Math.min(1.2, peptidesDetected * 0.06);
-  const socialSentimentScore = averageSentiment === null ? 0 : Math.max(-0.7, Math.min(0.7, averageSentiment * 0.7));
-  const socialVolumeScore = Math.min(0.45, Math.log10(reviewCount + 1) * 0.22);
-  const socialSourceDiversityScore = Math.min(0.16, sourceCount * 0.06);
+  const listingScore = Math.min(0.95, Math.log10(peptidesDetected + 1) * 0.52);
+  const socialSentimentScore = averageSentiment === null ? 0 : Math.max(-1.05, Math.min(1.05, averageSentiment * 1.15));
+  const socialVolumeScore = Math.min(0.7, Math.log10(reviewCount + 1) * 0.34);
+  const socialSourceDiversityScore = Math.min(0.32, sourceCount * 0.16);
 
-  const rawRating = 2.2 + trustPoints * 0.45 + listingScore + socialSentimentScore + socialVolumeScore + socialSourceDiversityScore;
-  const rating = Math.max(0, Math.min(5, Number(rawRating.toFixed(1))));
-  const rawConfidence = 0.42 + trustSignals.length * 0.06 + Math.min(0.25, peptidesDetected * 0.01) + Math.min(0.2, reviewCount * 0.01);
+  const weakSignalPositiveBias =
+    reviewCount <= 2 && (averageSentiment === null || averageSentiment >= -0.08)
+      ? 0.2
+      : reviewCount <= 5 && averageSentiment !== null && averageSentiment >= 0
+        ? 0.1
+        : 0;
+
+  const rawRating =
+    1.7 +
+    trustPoints * 0.62 +
+    listingScore +
+    socialSentimentScore +
+    socialVolumeScore +
+    socialSourceDiversityScore +
+    weakSignalPositiveBias;
+  const spreadAdjusted = 3 + (rawRating - 3) * 1.24;
+  const rating = Math.max(0, Math.min(5, Number(spreadAdjusted.toFixed(1))));
+
+  const rawConfidence =
+    0.26 +
+    trustSignals.length * 0.08 +
+    Math.min(0.24, peptidesDetected * 0.011) +
+    Math.min(0.22, reviewCount * 0.012) +
+    Math.min(0.1, sourceCount * 0.03);
   const confidence = Number(Math.max(0, Math.min(0.98, rawConfidence)).toFixed(2));
 
   return { rating, confidence };

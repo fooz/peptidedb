@@ -12,6 +12,10 @@ function hostEquals(hostname: string, expected: string): boolean {
   return hostname === expected || hostname === `www.${expected}`;
 }
 
+function hostMatches(hostname: string, expected: string): boolean {
+  return hostEquals(hostname, expected) || hostname.endsWith(`.${expected}`);
+}
+
 function firstNonEmpty(...values: Array<string | null | undefined>): string {
   for (const value of values) {
     const trimmed = value?.trim();
@@ -120,6 +124,26 @@ export function toHumanReadableSourceUrl(rawUrl: string | null | undefined): str
     if (cidFromPath) {
       return buildPubChemCompoundUrl(Number(cidFromPath));
     }
+  }
+
+  if (hostMatches(hostname, "reddit.com")) {
+    if (pathname.endsWith(".json")) {
+      const next = new URL(safe);
+      next.pathname = next.pathname.replace(/\.json$/i, "");
+      if (next.pathname.endsWith("/search")) {
+        next.pathname = `${next.pathname}/`;
+      }
+      return next.toString();
+    }
+    return safe;
+  }
+
+  if (hostEquals(hostname, "hn.algolia.com") && pathname.startsWith("/api/v1/")) {
+    const query = firstNonEmpty(parsed.searchParams.get("query"));
+    if (!query) {
+      return "https://hn.algolia.com/";
+    }
+    return `https://hn.algolia.com/?query=${encodeURIComponent(query)}&sort=byDate&type=story`;
   }
 
   return safe;
