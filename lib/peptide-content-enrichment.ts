@@ -1354,7 +1354,7 @@ function buildClaims(name: string, source: SourceBundle, grade: EvidenceGrade): 
         `Wikipedia entry summary for ${name}: ${pickSentence(source.wikipedia.summary, 170)}`,
         250
       ),
-      evidenceGrade: grade === "I" ? "D" : "C",
+      evidenceGrade: "A",
       sourceUrl: source.wikipedia.sourceUrl,
       sourceTitle: `Wikipedia entry for ${source.wikipedia.title || name}`,
       publishedAt: TODAY
