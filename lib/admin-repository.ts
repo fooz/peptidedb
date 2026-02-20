@@ -1,4 +1,5 @@
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
+import { sanitizeExternalUrl } from "@/lib/url-security";
 
 export type AdminOption = {
   id: number;
@@ -199,7 +200,7 @@ export async function getAdminDashboardData(
           section: asString(row.section),
           claimText: asString(row.claim_text),
           evidenceGrade: asString(row.evidence_grade) || null,
-          sourceUrl: asString(citation?.source_url),
+          sourceUrl: sanitizeExternalUrl(asString(citation?.source_url)) ?? "",
           sourceTitle: asString(citation?.source_title),
           publishedAt: asString(citation?.published_at)
         };
@@ -214,7 +215,7 @@ export async function getAdminDashboardData(
           id: asNumber(selectedVendorRecord.id),
           slug: asString(selectedVendorRecord.slug),
           name: asString(selectedVendorRecord.name),
-          websiteUrl: asString(selectedVendorRecord.website_url),
+          websiteUrl: sanitizeExternalUrl(asString(selectedVendorRecord.website_url)) ?? "",
           isPublished: asBoolean(selectedVendorRecord.is_published)
         }
       : null;

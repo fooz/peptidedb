@@ -377,8 +377,28 @@ FROM (
 JOIN vendors v ON v.slug = r.vendor_slug;
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon, authenticated;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO anon, authenticated;
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM anon, authenticated;
+
+GRANT SELECT ON
+  jurisdictions,
+  peptides,
+  peptide_profiles,
+  peptide_aliases,
+  peptide_regulatory_status,
+  use_cases,
+  peptide_use_cases,
+  peptide_dosing_entries,
+  peptide_safety_entries,
+  citations,
+  peptide_claims,
+  vendors,
+  vendor_profiles,
+  vendor_verifications,
+  vendor_lab_evidence,
+  vendor_peptide_listings,
+  vendor_rating_snapshots
+TO anon, authenticated;
 
 ALTER TABLE jurisdictions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE peptides ENABLE ROW LEVEL SECURITY;
@@ -410,24 +430,133 @@ DROP POLICY IF EXISTS public_read_peptide_safety_entries ON peptide_safety_entri
 DROP POLICY IF EXISTS public_read_citations ON citations;
 DROP POLICY IF EXISTS public_read_peptide_claims ON peptide_claims;
 DROP POLICY IF EXISTS public_read_vendors ON vendors;
+DROP POLICY IF EXISTS public_read_vendor_profiles ON vendor_profiles;
 DROP POLICY IF EXISTS public_read_vendor_verifications ON vendor_verifications;
 DROP POLICY IF EXISTS public_read_vendor_lab_evidence ON vendor_lab_evidence;
 DROP POLICY IF EXISTS public_read_vendor_peptide_listings ON vendor_peptide_listings;
 DROP POLICY IF EXISTS public_read_vendor_rating_snapshots ON vendor_rating_snapshots;
 
 CREATE POLICY public_read_jurisdictions ON jurisdictions FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY public_read_peptides ON peptides FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY public_read_peptide_profiles ON peptide_profiles FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY public_read_peptide_aliases ON peptide_aliases FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY public_read_peptide_regulatory_status ON peptide_regulatory_status FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY public_read_peptides ON peptides FOR SELECT TO anon, authenticated USING (is_published = true);
+CREATE POLICY public_read_peptide_profiles ON peptide_profiles FOR SELECT TO anon, authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM peptides p
+    WHERE p.id = peptide_profiles.peptide_id
+      AND p.is_published = true
+  )
+);
+CREATE POLICY public_read_peptide_aliases ON peptide_aliases FOR SELECT TO anon, authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM peptides p
+    WHERE p.id = peptide_aliases.peptide_id
+      AND p.is_published = true
+  )
+);
+CREATE POLICY public_read_peptide_regulatory_status ON peptide_regulatory_status FOR SELECT TO anon, authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM peptides p
+    WHERE p.id = peptide_regulatory_status.peptide_id
+      AND p.is_published = true
+  )
+);
 CREATE POLICY public_read_use_cases ON use_cases FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY public_read_peptide_use_cases ON peptide_use_cases FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY public_read_peptide_dosing_entries ON peptide_dosing_entries FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY public_read_peptide_safety_entries ON peptide_safety_entries FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY public_read_citations ON citations FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY public_read_peptide_claims ON peptide_claims FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY public_read_vendors ON vendors FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY public_read_vendor_verifications ON vendor_verifications FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY public_read_vendor_lab_evidence ON vendor_lab_evidence FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY public_read_vendor_peptide_listings ON vendor_peptide_listings FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY public_read_vendor_rating_snapshots ON vendor_rating_snapshots FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY public_read_peptide_use_cases ON peptide_use_cases FOR SELECT TO anon, authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM peptides p
+    WHERE p.id = peptide_use_cases.peptide_id
+      AND p.is_published = true
+  )
+);
+CREATE POLICY public_read_peptide_dosing_entries ON peptide_dosing_entries FOR SELECT TO anon, authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM peptides p
+    WHERE p.id = peptide_dosing_entries.peptide_id
+      AND p.is_published = true
+  )
+);
+CREATE POLICY public_read_peptide_safety_entries ON peptide_safety_entries FOR SELECT TO anon, authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM peptides p
+    WHERE p.id = peptide_safety_entries.peptide_id
+      AND p.is_published = true
+  )
+);
+CREATE POLICY public_read_citations ON citations FOR SELECT TO anon, authenticated
+USING (
+  EXISTS (
+    SELECT 1
+    FROM peptide_claims pc
+    JOIN peptides p ON p.id = pc.peptide_id
+    WHERE pc.citation_id = citations.id
+      AND p.is_published = true
+  )
+);
+CREATE POLICY public_read_peptide_claims ON peptide_claims FOR SELECT TO anon, authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM peptides p
+    WHERE p.id = peptide_claims.peptide_id
+      AND p.is_published = true
+  )
+);
+CREATE POLICY public_read_vendors ON vendors FOR SELECT TO anon, authenticated USING (is_published = true);
+CREATE POLICY public_read_vendor_profiles ON vendor_profiles FOR SELECT TO anon, authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM vendors v
+    WHERE v.id = vendor_profiles.vendor_id
+      AND v.is_published = true
+  )
+);
+CREATE POLICY public_read_vendor_verifications ON vendor_verifications FOR SELECT TO anon, authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM vendors v
+    WHERE v.id = vendor_verifications.vendor_id
+      AND v.is_published = true
+  )
+);
+CREATE POLICY public_read_vendor_lab_evidence ON vendor_lab_evidence FOR SELECT TO anon, authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM vendors v
+    WHERE v.id = vendor_lab_evidence.vendor_id
+      AND v.is_published = true
+  )
+  AND (
+    vendor_lab_evidence.peptide_id IS NULL
+    OR EXISTS (
+      SELECT 1 FROM peptides p
+      WHERE p.id = vendor_lab_evidence.peptide_id
+        AND p.is_published = true
+    )
+  )
+);
+CREATE POLICY public_read_vendor_peptide_listings ON vendor_peptide_listings FOR SELECT TO anon, authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM vendors v
+    WHERE v.id = vendor_peptide_listings.vendor_id
+      AND v.is_published = true
+  )
+  AND EXISTS (
+    SELECT 1 FROM peptides p
+    WHERE p.id = vendor_peptide_listings.peptide_id
+      AND p.is_published = true
+  )
+);
+CREATE POLICY public_read_vendor_rating_snapshots ON vendor_rating_snapshots FOR SELECT TO anon, authenticated
+USING (
+  is_current = true
+  AND EXISTS (
+    SELECT 1 FROM vendors v
+    WHERE v.id = vendor_rating_snapshots.vendor_id
+      AND v.is_published = true
+  )
+);

@@ -43,11 +43,11 @@ export default async function AdminLoginPage({ searchParams }: PageProps) {
         <form action={loginAdminAction} className="form-grid">
           <label>
             Username
-            <input name="username" autoComplete="username" />
+            <input name="username" autoComplete="username" required />
           </label>
           <label>
             Password
-            <PasswordInput name="password" autoComplete="current-password" />
+            <PasswordInput name="password" autoComplete="current-password" required />
           </label>
           <button className="btn primary" type="submit">
             Sign In

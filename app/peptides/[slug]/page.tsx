@@ -7,6 +7,7 @@ import { labelFromSnake } from "@/lib/constants";
 import { getPeptideDetail, listPeptides } from "@/lib/repository";
 import { absoluteUrl, safeJsonLd } from "@/lib/seo";
 import type { PeptideSummary } from "@/lib/types";
+import { sanitizeInternalPath } from "@/lib/url-security";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -50,16 +51,6 @@ function asSingle(value: SearchValue): string {
     return value[0]?.trim() ?? "";
   }
   return value?.trim() ?? "";
-}
-
-function sanitizeFromPath(value: string): string | null {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return null;
-  }
-  if (value.includes("\n") || value.includes("\r")) {
-    return null;
-  }
-  return value;
 }
 
 function breadcrumbLabelForFromPath(fromPath: string | null): string {
@@ -116,7 +107,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function PeptideDetailPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const resolvedSearchParams = (await searchParams) as SearchParams | undefined;
-  const fromPath = sanitizeFromPath(asSingle(resolvedSearchParams?.from));
+  const fromPath = sanitizeInternalPath(asSingle(resolvedSearchParams?.from), ["/peptides", "/vendors"]);
   const backPath = fromPath ?? "/peptides";
   const backLabel = breadcrumbLabelForFromPath(fromPath);
 
@@ -334,7 +325,7 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
                   <td>{claim.claimText}</td>
                   <td>{claim.evidenceGrade ?? "N/A"}</td>
                   <td>
-                    <a href={claim.sourceUrl} target="_blank" rel="noreferrer">
+                    <a href={claim.sourceUrl} target="_blank" rel="noreferrer noopener">
                       Open source
                     </a>
                   </td>
@@ -367,7 +358,7 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
                   <td>{claim.claimText}</td>
                   <td>{claim.evidenceGrade ?? "N/A"}</td>
                   <td>
-                    <a href={claim.sourceUrl} target="_blank" rel="noreferrer">
+                    <a href={claim.sourceUrl} target="_blank" rel="noreferrer noopener">
                       {claim.sourceTitle ?? "Open source"}
                     </a>
                   </td>

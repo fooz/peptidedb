@@ -24,6 +24,7 @@ Consumer-first peptide reference database with embedded clinical sections, evide
    - `ADMIN_USERNAME` (default: `admin`)
    - `ADMIN_PASSWORD` (required for `/admin` login)
    - `ADMIN_RESET_KEY` (required to use `/admin/reset-password`)
+   - `ADMIN_SESSION_SECRET` (recommended; random long string for signing admin sessions)
    - `ADMIN_AUTH_BUCKET` (optional, default: `vendor-docs`)
    - `ADMIN_AUTH_OBJECT_PATH` (optional, default: `_system/admin-auth.json`)
 4. Start:
@@ -49,6 +50,7 @@ Consumer-first peptide reference database with embedded clinical sections, evide
    - `ADMIN_USERNAME`
    - `ADMIN_PASSWORD`
    - `ADMIN_RESET_KEY`
+   - `ADMIN_SESSION_SECRET`
    - `ADMIN_AUTH_BUCKET` (optional)
    - `ADMIN_AUTH_OBJECT_PATH` (optional)
 3. Redeploy.

@@ -44,19 +44,19 @@ export default async function AdminResetPasswordPage({ searchParams }: PageProps
         <form action={resetAdminPasswordAction} className="form-grid">
           <label>
             Username
-            <input name="username" defaultValue={defaultUsername} autoComplete="username" />
+            <input name="username" defaultValue={defaultUsername} autoComplete="username" required />
           </label>
           <label>
             Reset key
-            <input name="resetKey" type="password" autoComplete="one-time-code" />
+            <input name="resetKey" type="password" autoComplete="one-time-code" required />
           </label>
           <label>
             New password
-            <input name="newPassword" type="password" autoComplete="new-password" />
+            <input name="newPassword" type="password" autoComplete="new-password" minLength={12} required />
           </label>
           <label>
             Confirm new password
-            <input name="confirmPassword" type="password" autoComplete="new-password" />
+            <input name="confirmPassword" type="password" autoComplete="new-password" minLength={12} required />
           </label>
           <button className="btn primary" type="submit">
             Reset Password

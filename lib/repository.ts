@@ -1,5 +1,6 @@
 import { getAllPeptides, getAllVendors, getPeptideBySlug } from "@/lib/mock-data";
 import { getSupabaseClient } from "@/lib/supabase";
+import { sanitizeExternalUrl } from "@/lib/url-security";
 import { getVendorSeedMetadata } from "@/lib/vendor-website-ingest";
 import type {
   DosingEntry,
@@ -130,7 +131,7 @@ function parseVendorReviewQuote(row: Record<string, unknown>): VendorReviewQuote
   const source = asString(parsed?.source) ?? verificationType.replace("community_review_", "").replace(/_/g, " ");
   const community = asString(parsed?.community) ?? source;
   const quote = asString(parsed?.quote);
-  const sourceUrl = asString(parsed?.sourceUrl);
+  const sourceUrl = sanitizeExternalUrl(asString(parsed?.sourceUrl));
   const createdAt = asString(parsed?.createdAt);
   if (!quote || !sourceUrl || !createdAt) {
     return null;
@@ -355,7 +356,7 @@ function mapEvidenceClaims(rows: unknown[]): EvidenceClaim[] {
       const citation = Array.isArray(record.citations) ? asRecord(record.citations[0]) : asRecord(record.citations);
       const section = asString(record.section);
       const claimText = asString(record.claim_text);
-      const sourceUrl = asString(citation?.source_url);
+      const sourceUrl = sanitizeExternalUrl(asString(citation?.source_url));
       const publishedAt = asString(citation?.published_at);
       if (!section || !claimText || !sourceUrl || !publishedAt) {
         return null;
@@ -763,7 +764,7 @@ export async function getVendorDetail(slug: string): Promise<VendorDetail | null
   return {
     slug: asString(vendorRow.slug) ?? slug,
     name: asString(vendorRow.name) ?? "Unknown vendor",
-    websiteUrl: asString(vendorRow.website_url) ?? "",
+    websiteUrl: sanitizeExternalUrl(asString(vendorRow.website_url)) ?? "",
     description:
       asString(profile?.description) ??
       seedMetadata?.description ??

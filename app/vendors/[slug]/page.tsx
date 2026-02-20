@@ -6,6 +6,7 @@ import { StarRating } from "@/app/components/star-rating";
 import { labelFromSnake } from "@/lib/constants";
 import { getVendorDetail } from "@/lib/repository";
 import { absoluteUrl, safeJsonLd } from "@/lib/seo";
+import { sanitizeInternalPath } from "@/lib/url-security";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -28,16 +29,6 @@ function asSingle(value: SearchValue): string {
     return value[0]?.trim() ?? "";
   }
   return value?.trim() ?? "";
-}
-
-function sanitizeFromPath(value: string): string | null {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return null;
-  }
-  if (value.includes("\n") || value.includes("\r")) {
-    return null;
-  }
-  return value;
 }
 
 function breadcrumbLabelForFromPath(fromPath: string | null): string {
@@ -84,7 +75,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function VendorDetailPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const resolvedSearchParams = (await searchParams) as SearchParams | undefined;
-  const fromPath = sanitizeFromPath(asSingle(resolvedSearchParams?.from));
+  const fromPath = sanitizeInternalPath(asSingle(resolvedSearchParams?.from), ["/vendors", "/peptides"]);
   const backPath = fromPath ?? "/vendors";
   const backLabel = breadcrumbLabelForFromPath(fromPath);
 
@@ -155,7 +146,7 @@ export default async function VendorDetailPage({ params, searchParams }: PagePro
         ) : null}
         {vendor.websiteUrl ? (
           <p>
-            <a href={vendor.websiteUrl} target="_blank" rel="noreferrer">
+            <a href={vendor.websiteUrl} target="_blank" rel="noreferrer noopener">
               Visit vendor website
             </a>
           </p>
@@ -213,7 +204,7 @@ export default async function VendorDetailPage({ params, searchParams }: PagePro
                   {review.author ?? "Community user"} · {formatDate(review.createdAt)}
                 </p>
                 <p>
-                  <a href={review.sourceUrl} target="_blank" rel="noreferrer">
+                  <a href={review.sourceUrl} target="_blank" rel="noreferrer noopener">
                     View source
                   </a>
                 </p>

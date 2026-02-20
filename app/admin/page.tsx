@@ -458,7 +458,7 @@ export default async function AdminPage({ searchParams }: PageProps) {
                   <td>{claim.claimText}</td>
                   <td>{claim.evidenceGrade ?? "N/A"}</td>
                   <td>
-                    <a href={claim.sourceUrl} target="_blank" rel="noreferrer">
+                    <a href={claim.sourceUrl} target="_blank" rel="noreferrer noopener">
                       {claim.sourceTitle || "Open source"}
                     </a>
                   </td>
