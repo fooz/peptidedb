@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/app/components/breadcrumbs";
 import { StarRating } from "@/app/components/star-rating";
 import { labelFromSnake } from "@/lib/constants";
+import { capitalizeLeadingLetter } from "@/lib/display-format";
 import { getPeptideDetail, listPeptides } from "@/lib/repository";
 import { absoluteUrl, safeJsonLd } from "@/lib/seo";
 import type { PeptideSummary } from "@/lib/types";
@@ -57,6 +58,11 @@ function formatDate(value: string): string {
     return value;
   }
   return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+}
+
+function formatEvidenceType(value: string): string {
+  const cleaned = value.replace(/^External Sources:\s*/i, "").trim();
+  return cleaned || value;
 }
 
 function asSingle(value: SearchValue): string {
@@ -136,14 +142,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   return {
-    title: peptide.name,
+    title: capitalizeLeadingLetter(peptide.name),
     description: peptide.intro,
     alternates: {
       canonical: `/peptides/${peptide.slug}`
     },
     openGraph: {
       type: "article",
-      title: `${peptide.name} Reference`,
+      title: `${capitalizeLeadingLetter(peptide.name)} Reference`,
       description: peptide.intro,
       url: absoluteUrl(`/peptides/${peptide.slug}`)
     }
@@ -162,6 +168,7 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
   if (!peptide) {
     notFound();
   }
+  const displayName = capitalizeLeadingLetter(peptide.name);
   const overviewText = combineOverview(peptide.intro, peptide.mechanism);
   const longDescriptionSections = parseLongDescriptionSections(peptide.longDescription);
 
@@ -184,18 +191,18 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "MedicalWebPage",
-    name: `${peptide.name} Peptide Reference`,
+    name: `${displayName} Peptide Reference`,
     url: absoluteUrl(`/peptides/${peptide.slug}`),
     description: peptide.intro,
     about: {
       "@type": "MedicalEntity",
-      name: peptide.name,
+      name: displayName,
       alternateName: peptide.aliases,
       description: peptide.longDescription
     },
     mainEntity: {
       "@type": "MedicalEntity",
-      name: peptide.name,
+      name: displayName,
       alternateName: peptide.aliases,
       description: peptide.longDescription
     },
@@ -210,9 +217,9 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
   return (
     <article className="grid" itemScope itemType="https://schema.org/MedicalEntity">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(structuredData) }} />
-      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: backLabel, href: backPath }, { label: peptide.name }]} />
+      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: backLabel, href: backPath }, { label: displayName }]} />
       <section className="card hero">
-        <h1 itemProp="name">{peptide.name}</h1>
+        <h1 itemProp="name">{displayName}</h1>
         <div className="meta-row">
           {Object.entries(peptide.statusByJurisdiction).map(([jurisdiction, status]) => (
             <span key={jurisdiction} className="chip">
@@ -446,7 +453,7 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
             <table>
               <thead>
                 <tr>
-                  <th>Section</th>
+                  <th>Type</th>
                   <th>Claim</th>
                   <th>Evidence Grade</th>
                   <th>Source</th>
@@ -456,7 +463,7 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
               <tbody>
                 {nonCommunityClaims.map((claim, index) => (
                   <tr key={`${claim.sourceUrl}-${index}`}>
-                    <td>{claim.section}</td>
+                    <td>{formatEvidenceType(claim.section)}</td>
                     <td>{claim.claimText}</td>
                     <td>{claim.evidenceGrade ?? "N/A"}</td>
                     <td>
@@ -493,7 +500,7 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
                         href={`/peptides/${relatedPeptide.slug}?from=${encodeURIComponent(returnTo)}`}
                         className="subtle-link"
                       >
-                        {relatedPeptide.name}
+                        {capitalizeLeadingLetter(relatedPeptide.name)}
                       </Link>
                     );
                   })}

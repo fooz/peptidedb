@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Breadcrumbs } from "@/app/components/breadcrumbs";
 import { EVIDENCE_GRADES, JURISDICTIONS, REGULATORY_STATUSES, labelFromSnake } from "@/lib/constants";
+import { capitalizeLeadingLetter } from "@/lib/display-format";
 import { filterPeptides, parsePeptideFilters } from "@/lib/filtering";
 import { listPeptides } from "@/lib/repository";
 import { absoluteUrl, safeJsonLd } from "@/lib/seo";
@@ -78,7 +79,7 @@ export default async function PeptidesPage({ searchParams }: PageProps) {
         "@type": "ListItem",
         position: index + 1,
         url: absoluteUrl(`/peptides/${peptide.slug}`),
-        name: peptide.name
+        name: capitalizeLeadingLetter(peptide.name)
       }))
     }
   };
@@ -183,7 +184,7 @@ export default async function PeptidesPage({ searchParams }: PageProps) {
         <article key={peptide.slug} className="card" itemScope itemType="https://schema.org/MedicalEntity">
           <h2>
             <Link href={`/peptides/${peptide.slug}?from=${encodeURIComponent(currentFilterPath)}`} itemProp="url">
-              <span itemProp="name">{peptide.name}</span>
+              <span itemProp="name">{capitalizeLeadingLetter(peptide.name)}</span>
             </Link>
           </h2>
           <p className="muted">

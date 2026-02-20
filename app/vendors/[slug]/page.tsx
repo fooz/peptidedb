@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/app/components/breadcrumbs";
 import { StarRating } from "@/app/components/star-rating";
 import { labelFromSnake } from "@/lib/constants";
+import { capitalizeLeadingLetter } from "@/lib/display-format";
 import { getVendorDetail } from "@/lib/repository";
 import { absoluteUrl, safeJsonLd } from "@/lib/seo";
 import { sanitizeInternalPath } from "@/lib/url-security";
@@ -224,7 +225,7 @@ export default async function VendorDetailPage({ params, searchParams }: PagePro
               <article key={peptide.slug} className="card">
                 <h3>
                   <Link href={`/peptides/${peptide.slug}?from=${encodeURIComponent(`/vendors/${vendor.slug}`)}`}>
-                    {peptide.name}
+                    {capitalizeLeadingLetter(peptide.name)}
                   </Link>
                 </h3>
                 <p className="muted">{peptide.className}</p>

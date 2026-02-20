@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { StarRating } from "@/app/components/star-rating";
+import { capitalizeLeadingLetter } from "@/lib/display-format";
 import { listPeptides, listVendors } from "@/lib/repository";
 import { absoluteUrl, safeJsonLd } from "@/lib/seo";
 import type { PeptideSummary } from "@/lib/types";
@@ -100,18 +101,6 @@ function sortForPreview(peptides: PeptideSummary[]): PeptideSummary[] {
   });
 }
 
-function toDisplayName(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return value;
-  }
-  const hasUppercase = /[A-Z]/.test(trimmed);
-  if (hasUppercase) {
-    return trimmed;
-  }
-  return trimmed.replace(/\b[a-z]/g, (char) => char.toUpperCase());
-}
-
 function buildHealthGoalCards(peptides: PeptideSummary[]): HealthGoalCard[] {
   const useCaseSet = new Set(peptides.flatMap((peptide) => peptide.useCases));
 
@@ -168,7 +157,7 @@ export default async function HomePage() {
         "@type": "ListItem",
         position: index + 1,
         url: absoluteUrl(`/peptides/${peptide.slug}`),
-        name: peptide.name
+        name: capitalizeLeadingLetter(peptide.name)
       }))
     }
   };
@@ -257,7 +246,7 @@ export default async function HomePage() {
                       href={`/peptides/${peptide.slug}?from=${encodeURIComponent(returnTo)}`}
                       className="subtle-link"
                     >
-                      {toDisplayName(peptide.name)}
+                      {capitalizeLeadingLetter(peptide.name)}
                     </Link>
                   );
                 })}
@@ -281,7 +270,7 @@ export default async function HomePage() {
                 href={`/peptides/${peptide.slug}?from=${encodeURIComponent("/peptides")}`}
                 className="subtle-link"
               >
-                {toDisplayName(peptide.name)}
+                {capitalizeLeadingLetter(peptide.name)}
               </Link>
             ))}
           </div>
