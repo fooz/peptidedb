@@ -53,6 +53,39 @@ function asSingle(value: SearchValue): string {
   return value?.trim() ?? "";
 }
 
+function combineOverview(intro: string, mechanism: string): string {
+  const introText = intro.trim();
+  const mechanismText = mechanism.trim();
+  if (!mechanismText) {
+    return introText;
+  }
+  if (!introText) {
+    return mechanismText;
+  }
+  if (introText.toLowerCase().includes(mechanismText.toLowerCase())) {
+    return introText;
+  }
+  return `${introText} ${mechanismText}`;
+}
+
+function parseLongDescriptionSections(value: string): Array<{ title: string | null; body: string }> {
+  return value
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block) => {
+      const match = block.match(/^([A-Za-z][A-Za-z0-9 &/()-]{2,80}):\s*([\s\S]+)$/);
+      if (!match) {
+        return { title: null, body: block };
+      }
+      return {
+        title: match[1]?.trim() ?? null,
+        body: (match[2] ?? "").trim()
+      };
+    })
+    .filter((section) => Boolean(section.body));
+}
+
 function breadcrumbLabelForFromPath(fromPath: string | null): string {
   if (!fromPath) {
     return "Peptides";
@@ -116,6 +149,8 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
   if (!peptide) {
     notFound();
   }
+  const overviewText = combineOverview(peptide.intro, peptide.mechanism);
+  const longDescriptionSections = parseLongDescriptionSections(peptide.longDescription);
 
   const relatedByUseCase = peptide.useCases
     .map((useCase) => {
@@ -172,9 +207,9 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
             </span>
           ))}
         </div>
-        <p itemProp="description">{peptide.intro}</p>
-        <h3>Clinical view:</h3>
-        <p>{peptide.mechanism}</p>
+        <p itemProp="description" className="overview-text">
+          {overviewText}
+        </p>
       </section>
 
       <section className="card">
@@ -301,7 +336,18 @@ export default async function PeptideDetailPage({ params, searchParams }: PagePr
 
       <section className="card">
         <h2>Long Description</h2>
-        <p itemProp="abstract">{peptide.longDescription}</p>
+        {longDescriptionSections.length === 0 ? (
+          <p itemProp="abstract">{peptide.longDescription}</p>
+        ) : (
+          <div className="long-description-grid" itemProp="abstract">
+            {longDescriptionSections.map((section, index) => (
+              <article key={`${section.title ?? "section"}-${index}`} className="safety-item">
+                {section.title ? <h3>{section.title}</h3> : null}
+                <p>{section.body}</p>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="card">

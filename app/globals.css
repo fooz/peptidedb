@@ -232,6 +232,11 @@ a:hover {
   flex-wrap: wrap;
 }
 
+.overview-text {
+  line-height: 1.6;
+  max-width: 95ch;
+}
+
 .ingest-controls {
   display: grid;
   gap: 0.75rem;
@@ -652,6 +657,12 @@ td {
 .safety-item p {
   margin: 0;
   color: #2a3f58;
+}
+
+.long-description-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.7rem;
 }
 
 .auth-wrap {

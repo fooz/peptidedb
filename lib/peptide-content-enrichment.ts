@@ -109,12 +109,27 @@ type ChemblData = {
   sourceUrl: string;
 };
 
+type WikipediaSummary = {
+  found: boolean;
+  title: string;
+  summary: string;
+  sourceUrl: string;
+};
+
+type NciSummary = {
+  found: boolean;
+  summary: string;
+  sourceUrl: string;
+};
+
 type SourceBundle = {
   clinicalTrials: ClinicalTrialsSnapshot;
   pubMed: PubMedSnapshot;
   openFda: OpenFdaLabel;
   pubChem: PubChemData;
   chembl: ChemblData;
+  wikipedia: WikipediaSummary;
+  nci: NciSummary;
 };
 
 type GeneratedContent = {
@@ -277,8 +292,9 @@ function truncate(text: string, max = 420): string {
   return `${cleaned.slice(0, max - 1)}...`;
 }
 
-function firstNonEmpty(values: string[]): string {
-  for (const value of values) {
+function firstNonEmpty(...values: Array<string | string[]>): string {
+  const flatValues = values.flatMap((value) => (Array.isArray(value) ? value : [value]));
+  for (const value of flatValues) {
     if (value.trim()) {
       return value.trim();
     }
@@ -379,12 +395,62 @@ async function fetchJson(url: string, retries = 2): Promise<unknown> {
   throw lastError instanceof Error ? lastError : new Error("Unknown fetch error.");
 }
 
+async function fetchText(url: string, retries = 2): Promise<string> {
+  let attempt = 0;
+  let lastError: unknown = null;
+
+  while (attempt <= retries) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 18_000);
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: { accept: "text/html,application/xhtml+xml,text/plain,*/*" },
+        cache: "no-store",
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        if ((response.status === 429 || response.status >= 500) && attempt < retries) {
+          attempt += 1;
+          await sleep(450 * attempt);
+          continue;
+        }
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      return await response.text();
+    } catch (error) {
+      lastError = error;
+      if (attempt >= retries) {
+        throw error;
+      }
+      attempt += 1;
+      await sleep(450 * attempt);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Unknown fetch error.");
+}
+
 function normalizeSearchName(name: string): string {
   return name
     .replace(/\([^)]*\)/g, " ")
     .replace(/[()[\]{}:;,+/\\]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function decodeHtmlEntities(value: string): string {
+  return value
+    .replace(/&#(\d+);/g, (_, code: string) => String.fromCharCode(Number(code)))
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
 }
 
 async function fetchClinicalTrialsSnapshot(name: string): Promise<ClinicalTrialsSnapshot> {
@@ -544,6 +610,83 @@ async function fetchPubMedSnapshot(name: string): Promise<PubMedSnapshot> {
       recentTitles: [],
       searchUrl: humanSearchUrl
     };
+  }
+}
+
+function wikipediaCandidates(name: string, aliases: string[]): string[] {
+  const candidates = uniqueStrings([name, ...aliases]).flatMap((value) => {
+    const cleaned = normalizeSearchName(value);
+    const titleCase = cleaned
+      .split(" ")
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(" ");
+    return uniqueStrings([value, cleaned, titleCase]).filter(Boolean);
+  });
+  return uniqueStrings(candidates);
+}
+
+async function fetchWikipediaSummary(name: string, aliases: string[]): Promise<WikipediaSummary> {
+  const candidates = wikipediaCandidates(name, aliases).slice(0, 8);
+  const emptyResult: WikipediaSummary = {
+    found: false,
+    title: "",
+    summary: "",
+    sourceUrl: ""
+  };
+
+  for (const candidate of candidates) {
+    const encoded = encodeURIComponent(candidate.replace(/\s+/g, "_"));
+    const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encoded}`;
+    try {
+      const payload = asRecord(await fetchJson(url));
+      const extract = asString(payload?.extract);
+      const type = asString(payload?.type).toLowerCase();
+      if (!extract || type === "disambiguation") {
+        continue;
+      }
+
+      const title = asString(payload?.title) || candidate;
+      const humanUrl = `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/\s+/g, "_"))}`;
+      return {
+        found: true,
+        title,
+        summary: truncate(extract, 700),
+        sourceUrl: humanUrl
+      };
+    } catch {
+      continue;
+    }
+  }
+
+  return emptyResult;
+}
+
+async function fetchNciSummary(name: string): Promise<NciSummary> {
+  const normalized = normalizeSearchName(name).toLowerCase();
+  const slug = normalized.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  const sourceUrl = `https://www.cancer.gov/publications/dictionaries/cancer-drug/def/${slug}`;
+
+  try {
+    const html = await fetchText(sourceUrl, 1);
+    const lower = html.toLowerCase();
+    if (!lower.includes(normalized)) {
+      return { found: false, summary: "", sourceUrl: "" };
+    }
+
+    const metaDescription = html.match(/<meta\s+name=["']description["']\s+content=["']([^"']+)["']/i)?.[1] ?? "";
+    const summary = truncate(decodeHtmlEntities(metaDescription), 420);
+    if (!summary) {
+      return { found: false, summary: "", sourceUrl: "" };
+    }
+
+    return {
+      found: true,
+      summary,
+      sourceUrl
+    };
+  } catch {
+    return { found: false, summary: "", sourceUrl: "" };
   }
 }
 
@@ -830,19 +973,23 @@ async function fetchChemblData(name: string): Promise<ChemblData> {
 }
 
 async function collectSourceBundle(name: string, aliases: string[]): Promise<SourceBundle> {
-  const [clinicalTrials, pubMed, openFda, pubChem, chembl] = await Promise.all([
+  const [clinicalTrials, pubMed, openFda, pubChem, chembl, wikipedia, nci] = await Promise.all([
     fetchClinicalTrialsSnapshot(name),
     fetchPubMedSnapshot(name),
     fetchOpenFdaLabel(name, aliases),
     fetchPubChemData(name),
-    fetchChemblData(name)
+    fetchChemblData(name),
+    fetchWikipediaSummary(name, aliases),
+    fetchNciSummary(name)
   ]);
   return {
     clinicalTrials,
     pubMed,
     openFda,
     pubChem,
-    chembl
+    chembl,
+    wikipedia,
+    nci
   };
 }
 
@@ -915,51 +1062,157 @@ function inferUseCases(name: string, source: SourceBundle, grade: EvidenceGrade)
   });
 }
 
+function sectionLine(title: string, text: string, max = 900): string {
+  return `${title}: ${truncate(compact(text), max)}`;
+}
+
+function formatUseCaseList(useCases: GeneratedContent["useCases"]): string {
+  const informative = useCases
+    .map((entry) => entry.name)
+    .filter((name) => name.toLowerCase() !== "evidence tracking");
+  if (informative.length === 0) {
+    return "evidence tracking contexts";
+  }
+  if (informative.length === 1) {
+    return informative[0] ?? "targeted use contexts";
+  }
+  return `${informative.slice(0, -1).join(", ")}, and ${informative[informative.length - 1]}`;
+}
+
 function generateMechanism(name: string, className: string, source: SourceBundle): string {
-  const mechanismSnippet = source.chembl.mechanisms[0] ? truncate(source.chembl.mechanisms[0], 240) : "";
-  const labelSnippet = source.openFda.clinicalPharmacology ? pickSentence(source.openFda.clinicalPharmacology, 220) : "";
-  const pubChemSnippet = source.pubChem.description ? pickSentence(source.pubChem.description, 220) : "";
+  const wikiSnippet = source.wikipedia.found ? pickSentence(source.wikipedia.summary, 260) : "";
+  const mechanismSnippet = source.chembl.mechanisms[0] ? truncate(source.chembl.mechanisms[0], 260) : "";
+  const labelSnippet = source.openFda.clinicalPharmacology ? pickSentence(source.openFda.clinicalPharmacology, 240) : "";
+  const pubChemSnippet = source.pubChem.description ? pickSentence(source.pubChem.description, 240) : "";
 
   return firstNonEmpty([
     [mechanismSnippet, labelSnippet].filter(Boolean).join(" "),
     mechanismSnippet,
     labelSnippet,
+    wikiSnippet,
     pubChemSnippet,
-    `${name} is listed as ${className || "a peptide"} with mechanism information still evolving across public sources.`
+    `${name} is listed as ${className || "a peptide"} with mechanism details still evolving across public sources.`
   ]);
 }
 
-function generateLongDescription(name: string, className: string, source: SourceBundle, grade: EvidenceGrade): string {
-  const paragraphs: string[] = [];
-
-  const sourceIdentityBits = [
-    source.pubChem.found && source.pubChem.molecularFormula
-      ? `PubChem lists molecular formula ${source.pubChem.molecularFormula}${source.pubChem.molecularWeight ? ` with molecular weight ${source.pubChem.molecularWeight}` : ""}.`
-      : "",
-    source.chembl.found
-      ? `ChEMBL record ${source.chembl.chemblId}${source.chembl.maxPhase !== null ? ` reports max phase ${source.chembl.maxPhase}` : ""}${source.chembl.firstApproval ? ` and first approval year ${source.chembl.firstApproval}` : ""}.`
-      : ""
-  ].filter(Boolean);
-
-  if (sourceIdentityBits.length > 0) {
-    paragraphs.push(truncate(`${name} is categorized as ${className || "a peptide"} in this reference. ${sourceIdentityBits.join(" ")}`, 520));
+function generateCommonPairingsContext(name: string, className: string): string {
+  const lower = `${name} ${className}`.toLowerCase();
+  if (lower.includes("ipamorelin") || lower.includes("secretagogue") || lower.includes("ghrp")) {
+    return "Community protocols often discuss pairing growth hormone secretagogues with GHRH analogs (for example, CJC-1295 with ipamorelin) to combine pulse and background signaling. These stacks are largely supported by mechanistic rationale and anecdotal reporting, not definitive long-term randomized outcome data.";
   }
+  if (lower.includes("glp-1") || lower.includes("incretin")) {
+    return "In clinical practice, incretin-class peptides are typically integrated with nutrition, exercise, and cardiometabolic risk management rather than stacked with other experimental peptides. Combination decisions should be indication-specific and supervised by qualified clinicians.";
+  }
+  return "Pairing strategies are frequently discussed in community and wellness settings, but combination protocols are highly variable and often lack high-quality controlled comparative evidence.";
+}
 
-  const evidenceParagraph = truncate(
-    `Evidence snapshot (${TODAY}): ClinicalTrials.gov returns ${source.clinicalTrials.total} studies for ${name} (completed ${source.clinicalTrials.completed}, recruiting ${source.clinicalTrials.recruiting}, active ${source.clinicalTrials.active}, terminated ${source.clinicalTrials.terminated}, posted results ${source.clinicalTrials.withResults}). PubMed indexes ${source.pubMed.count} related records${source.pubMed.newestYear ? ` with recent publication years through ${source.pubMed.newestYear}` : ""}.`,
-    560
+function generateIntroSummary(
+  name: string,
+  className: string,
+  source: SourceBundle,
+  mechanism: string,
+  evidenceGrade: EvidenceGrade,
+  useCases: GeneratedContent["useCases"]
+): string {
+  const identity = firstNonEmpty(
+    source.wikipedia.found ? pickSentence(source.wikipedia.summary, 240) : "",
+    source.nci.found ? pickSentence(source.nci.summary, 220) : "",
+    `${name} is cataloged as ${className || "a peptide reference entry"}.`
   );
-  paragraphs.push(evidenceParagraph);
+  const mechanismLine = pickSentence(mechanism, 220);
+  const mechanismForIntro =
+    mechanismLine && identity.toLowerCase().includes(mechanismLine.toLowerCase().slice(0, 80)) ? "" : mechanismLine;
+  const regulatoryLine = source.openFda.found
+    ? `${name} has US label-linked drug information for specific indications, while non-labeled uses still require careful clinical judgment.`
+    : `${name} is generally treated as investigational/research-use in US contexts, and broad wellness claims exceed current approval status.`;
+  const evidenceLine = `Current evidence is graded ${evidenceGrade}, with mapped use contexts including ${formatUseCaseList(useCases)}.`;
+  return truncate([identity, mechanismForIntro, regulatoryLine, evidenceLine].filter(Boolean).join(" "), 680);
+}
 
-  const conditionList = source.clinicalTrials.topConditions.slice(0, 4).join(", ");
-  const indicationList = source.chembl.indications.slice(0, 4).join(", ");
-  const indicationParagraph = truncate(
-    `${source.openFda.found ? `openFDA label records were identified for ${source.openFda.matchedTerm || name}.` : `No openFDA label match was identified for ${name} using primary name and aliases.`} ${conditionList ? `Most frequent trial-linked conditions include ${conditionList}.` : ""} ${indicationList ? `ChEMBL indication terms include ${indicationList}.` : ""} Overall evidence grade is currently ${grade}.`,
-    560
+function generateLongDescription(
+  name: string,
+  className: string,
+  source: SourceBundle,
+  grade: EvidenceGrade,
+  mechanism: string,
+  useCases: GeneratedContent["useCases"]
+): string {
+  const routeHint = firstNonEmpty(
+    source.openFda.routeHints[0] ?? "",
+    inferRoute(source.openFda.dosage),
+    inferRoute(source.openFda.indications),
+    "protocol-dependent administration"
   );
-  paragraphs.push(indicationParagraph);
+  const frequencyHint = firstNonEmpty(
+    source.openFda.frequencyHints[0] ?? "",
+    inferFrequency(source.openFda.dosage),
+    inferFrequency(source.openFda.indications),
+    "protocol-dependent frequency"
+  );
+  const doseMentions = extractDosePhrase(source.openFda.dosage).slice(0, 2).join("; ");
+  const topConditions = source.clinicalTrials.topConditions.slice(0, 4).join(", ");
+  const chemblIndications = source.chembl.indications.slice(0, 4).join(", ");
 
-  return paragraphs.filter(Boolean).join("\n\n");
+  const whatItIs = firstNonEmpty(
+    source.wikipedia.found ? source.wikipedia.summary : "",
+    source.nci.found ? source.nci.summary : "",
+    `${name} is categorized as ${className || "a peptide"} in this reference database.`
+  );
+
+  const mechanismText = firstNonEmpty(
+    mechanism,
+    source.chembl.mechanisms[0] ? source.chembl.mechanisms[0] : "",
+    `${name} has limited publicly indexed mechanism detail and should be interpreted with source-level caution.`
+  );
+
+  const administrationText = source.openFda.found
+    ? `${name} has label-linked administration information with typical ${routeHint.toLowerCase()} use and ${frequencyHint.toLowerCase()} scheduling${doseMentions ? ` (example label text snippets include ${doseMentions})` : ""}. Exact product dosing should always be confirmed against the current approved label.`
+    : `${name} does not currently map to a robust US label dosing record in this pipeline. In available literature and protocol discussions, administration is usually ${routeHint.toLowerCase()} with ${frequencyHint.toLowerCase()} timing, but exact regimens are protocol-specific and not standardized for broad consumer use.`;
+
+  const useContextText = `Use-context mapping for ${name} currently emphasizes ${formatUseCaseList(useCases)}. ${topConditions ? `Common trial-linked condition clusters include ${topConditions}.` : ""} ${chemblIndications ? `ChEMBL indication terms include ${chemblIndications}.` : ""}`.trim();
+
+  const safetyText = firstNonEmpty(
+    pickSentence(source.openFda.adverseReactions, 260),
+    `Published safety data remain heterogeneous, and adverse-event interpretation should rely on study-specific populations, doses, and follow-up duration.`
+  );
+
+  const contraindicationText = firstNonEmpty(
+    pickSentence(source.openFda.contraindications, 220),
+    pickSentence(source.openFda.warnings, 220),
+    `Contraindications and risk exclusions should be assessed case-by-case using protocol criteria, comorbidity review, and clinician oversight.`
+  );
+
+  const interactionText = firstNonEmpty(
+    pickSentence(source.openFda.interactions, 220),
+    `Drug interaction characterization is often incomplete outside approved-label contexts, so co-therapy review is essential.`
+  );
+
+  const legalText = source.openFda.found
+    ? `${name} is associated with US approved-label drug information for selected indications; off-label or non-indicated uses are outside formal approval scope.`
+    : `${name} is primarily cataloged in investigational/research contexts in this dataset and should not be interpreted as broadly approved for general consumer treatment claims.`;
+  const sportsText =
+    className.toLowerCase().includes("secretagogue") || className.toLowerCase().includes("growth hormone")
+      ? `Growth-hormone-pathway peptides are commonly prohibited in tested competition frameworks, including WADA-class anti-doping categories.`
+      : "";
+
+  return [
+    sectionLine("What It Is", whatItIs),
+    sectionLine("Mechanism And Pharmacology", mechanismText),
+    sectionLine("Administration Patterns", administrationText),
+    sectionLine("Potential Benefits And Use Contexts", useContextText),
+    sectionLine(
+      "Safety And Tolerability",
+      `${safetyText} Contraindication context: ${contraindicationText} Interaction context: ${interactionText}`
+    ),
+    sectionLine("Common Pairings And Protocol Context", generateCommonPairingsContext(name, className)),
+    sectionLine("Legal And Regulatory Status", [legalText, sportsText].filter(Boolean).join(" ")),
+    sectionLine(
+      "Evidence Snapshot",
+      `As of ${TODAY}, ClinicalTrials.gov indexes ${source.clinicalTrials.total} studies for ${name} (completed ${source.clinicalTrials.completed}, recruiting ${source.clinicalTrials.recruiting}, active ${source.clinicalTrials.active}, terminated ${source.clinicalTrials.terminated}, posted results ${source.clinicalTrials.withResults}). PubMed returns ${source.pubMed.count} indexed records${source.pubMed.newestYear ? ` with publication years through ${source.pubMed.newestYear}` : ""}. Overall evidence grade: ${grade}.`
+    )
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 function generateSafety(source: SourceBundle, name: string) {
@@ -1094,7 +1347,32 @@ function buildClaims(name: string, source: SourceBundle, grade: EvidenceGrade): 
     });
   }
 
-  return claims.slice(0, 4);
+  if (source.wikipedia.found && source.wikipedia.sourceUrl) {
+    claims.push({
+      section: "External Sources: Wikipedia",
+      claimText: truncate(
+        `Wikipedia entry summary for ${name}: ${pickSentence(source.wikipedia.summary, 170)}`,
+        250
+      ),
+      evidenceGrade: grade === "I" ? "D" : "C",
+      sourceUrl: source.wikipedia.sourceUrl,
+      sourceTitle: `Wikipedia entry for ${source.wikipedia.title || name}`,
+      publishedAt: TODAY
+    });
+  }
+
+  if (source.nci.found && source.nci.sourceUrl) {
+    claims.push({
+      section: "External Sources: NCI",
+      claimText: truncate(`NCI Drug Dictionary reference context for ${name}: ${pickSentence(source.nci.summary, 170)}`, 250),
+      evidenceGrade: "C",
+      sourceUrl: source.nci.sourceUrl,
+      sourceTitle: `NCI Drug Dictionary: ${name}`,
+      publishedAt: TODAY
+    });
+  }
+
+  return claims.slice(0, 6);
 }
 
 function generateContent(name: string, className: string, source: SourceBundle): GeneratedContent {
@@ -1105,16 +1383,13 @@ function generateContent(name: string, className: string, source: SourceBundle):
     `Current evidence synthesis for ${name} is grade ${evidenceGrade}, based on ${source.clinicalTrials.total} indexed ClinicalTrials.gov studies and ${source.pubMed.count} PubMed records${source.openFda.found ? ", with openFDA label data available." : "."}`,
     320
   );
-  const intro = truncate(
-    `${name} is listed as ${className || "a peptide reference entry"}, with current consumer and clinical summaries synthesized from regulatory records, trial registries, and indexed publications.`,
-    260
-  );
+  const intro = generateIntroSummary(name, className, source, mechanism, evidenceGrade, useCases);
 
   return {
     intro,
     mechanism,
     effectivenessSummary,
-    longDescription: generateLongDescription(name, className, source, evidenceGrade),
+    longDescription: generateLongDescription(name, className, source, evidenceGrade, mechanism, useCases),
     safety: generateSafety(source, name),
     dosing: generateDosing(source, name),
     useCases,
