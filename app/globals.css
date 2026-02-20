@@ -659,6 +659,22 @@ td {
   margin: 2rem auto 0;
 }
 
+.password-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.password-input-wrap input {
+  margin-top: 0;
+  flex: 1;
+}
+
+.password-toggle {
+  min-width: 4.6rem;
+}
+
 @keyframes riseIn {
   from {
     opacity: 0;

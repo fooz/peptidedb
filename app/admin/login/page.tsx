@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { loginAdminAction } from "@/app/admin/auth-actions";
+import { PasswordInput } from "@/app/admin/login/password-input";
 import { isAdminAuthenticated } from "@/lib/admin-auth";
 
 type SearchValue = string | string[] | undefined;
@@ -46,7 +47,7 @@ export default async function AdminLoginPage({ searchParams }: PageProps) {
           </label>
           <label>
             Password
-            <input name="password" type="password" autoComplete="current-password" />
+            <PasswordInput name="password" autoComplete="current-password" />
           </label>
           <button className="btn primary" type="submit">
             Sign In
