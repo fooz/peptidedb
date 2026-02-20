@@ -38,7 +38,6 @@ Consumer-first peptide reference database with embedded clinical sections, evide
   ```bash
   npm run security:scan-secrets
   ```
-- GitHub Actions also runs the same scan on pushes/PRs to `main`.
 
 ## Supabase setup
 1. Open Supabase SQL editor.
