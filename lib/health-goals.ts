@@ -37,7 +37,10 @@ export const HEALTH_GOAL_DEFINITIONS: HealthGoalDefinition[] = [
     keyQuestions: [
       "Which peptides have the strongest human outcomes for weight reduction?",
       "How do trial populations and dosing approaches differ by peptide?",
-      "What safety signals and contraindications are most relevant for metabolic use?"
+      "What safety signals and contraindications are most relevant for metabolic use?",
+      "How quickly do weight and glycemic effects appear in studies?",
+      "Which peptides are approved in major regions versus investigational-only?",
+      "How durable are outcomes after dose changes or discontinuation?"
     ]
   },
   {
@@ -51,7 +54,10 @@ export const HEALTH_GOAL_DEFINITIONS: HealthGoalDefinition[] = [
     keyQuestions: [
       "Are outcomes based on approved indications or investigational contexts?",
       "How consistent are performance and recovery claims across studies?",
-      "Which safety and monitoring issues matter most for repeated use?"
+      "Which safety and monitoring issues matter most for repeated use?",
+      "What endpoints are objective versus self-reported in muscle studies?",
+      "How often are compounds stacked, and what does evidence say about that?",
+      "Which populations are most represented in published human data?"
     ]
   },
   {
@@ -65,7 +71,10 @@ export const HEALTH_GOAL_DEFINITIONS: HealthGoalDefinition[] = [
     keyQuestions: [
       "Which benefits are supported by controlled human data versus early-stage evidence?",
       "What endpoints are actually measured in studies?",
-      "How should consumers interpret durability and long-term safety claims?"
+      "How should consumers interpret durability and long-term safety claims?",
+      "Which anti-aging claims are mostly mechanistic rather than clinically proven?",
+      "What monitoring is reasonable for longer-duration use?",
+      "How different is regulatory treatment by jurisdiction for these claims?"
     ]
   },
   {
@@ -79,7 +88,10 @@ export const HEALTH_GOAL_DEFINITIONS: HealthGoalDefinition[] = [
     keyQuestions: [
       "What evidence exists for injury or surgery recovery endpoints?",
       "How fast do outcomes appear in controlled settings?",
-      "Which adverse effects are most commonly reported in recovery protocols?"
+      "Which adverse effects are most commonly reported in recovery protocols?",
+      "Which recovery outcomes are strongest in human trials versus animal models?",
+      "How should protocol quality influence confidence in a recovery claim?",
+      "What follow-up timeline is typical before reassessing effectiveness?"
     ]
   },
   {
@@ -93,7 +105,10 @@ export const HEALTH_GOAL_DEFINITIONS: HealthGoalDefinition[] = [
     keyQuestions: [
       "Which compounds have human cognition-related endpoints?",
       "How strong is evidence versus anecdotal community reporting?",
-      "What risk factors require clinician oversight?"
+      "What risk factors require clinician oversight?",
+      "What cognitive endpoints are measured objectively in trials?",
+      "How should mood or sleep effects be interpreted in mixed-study populations?",
+      "Which interactions matter most with psychiatric or neurologic medications?"
     ]
   },
   {
@@ -107,7 +122,10 @@ export const HEALTH_GOAL_DEFINITIONS: HealthGoalDefinition[] = [
     keyQuestions: [
       "Which uses are approved treatment pathways versus research contexts?",
       "How do efficacy endpoints vary by reproductive indication?",
-      "What monitoring standards are important for endocrine-active peptides?"
+      "What monitoring standards are important for endocrine-active peptides?",
+      "How do outcomes differ between male and female study populations?",
+      "Which adverse effects require prompt clinical review?",
+      "How should fertility goals shape peptide selection and follow-up?"
     ]
   },
   {
@@ -121,7 +139,10 @@ export const HEALTH_GOAL_DEFINITIONS: HealthGoalDefinition[] = [
     keyQuestions: [
       "Which compounds are tied to renal outcomes in human studies?",
       "How should evidence be interpreted across diabetes subgroups?",
-      "What contraindications and interactions are most relevant clinically?"
+      "What contraindications and interactions are most relevant clinically?",
+      "How does renal function change dosing and monitoring decisions?",
+      "Which endpoints best reflect kidney protection versus glycemic control alone?",
+      "What population limits reduce generalizability of trial findings?"
     ]
   }
 ];

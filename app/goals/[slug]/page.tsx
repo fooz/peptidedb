@@ -4,12 +4,64 @@ import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/app/components/breadcrumbs";
 import { capitalizeLeadingLetter } from "@/lib/display-format";
 import { buildHealthGoalCards, getHealthGoalBySlug, HEALTH_GOAL_DEFINITIONS } from "@/lib/health-goals";
+import type { HealthGoalCard } from "@/lib/health-goals";
 import { listPeptides } from "@/lib/repository";
 import { absoluteUrl, safeJsonLd } from "@/lib/seo";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
+
+type GoalFaqEntry = {
+  question: string;
+  answer: string;
+};
+
+const CROSS_GOAL_FAQ_QUESTIONS = [
+  "How should I compare evidence grades across peptides in this goal?",
+  "How should I use regulatory status badges when evaluating options?",
+  "What should I check before discussing a peptide with a clinician?"
+];
+
+function buildGoalFaqAnswer(goalCard: HealthGoalCard, question: string): string {
+  const questionLower = question.toLowerCase();
+  const useCaseText = goalCard.matchedUseCases.join(", ");
+
+  if (questionLower.includes("evidence grade")) {
+    return `Use evidence grade as a confidence signal, not a standalone decision rule. In ${goalCard.title.toLowerCase()}, start with A/B evidence entries, then compare study design quality, population fit, and source-linked claims before drawing conclusions.`;
+  }
+  if (questionLower.includes("regulatory status")) {
+    return `Check whether a peptide has approved status in your jurisdiction (US/EU/UK/CA/AU) for the specific intended use. Approval in one region or indication does not automatically validate broad consumer claims in ${goalCard.title.toLowerCase()}.`;
+  }
+  if (questionLower.includes("dosing")) {
+    return `Compare route, frequency, and context across peptide profiles, then prioritize approved-label dosing where available. For investigational entries in ${goalCard.title.toLowerCase()}, dosing should be interpreted as study context rather than universal guidance.`;
+  }
+  if (questionLower.includes("safety") || questionLower.includes("adverse") || questionLower.includes("contraindication")) {
+    return `Review adverse effects, contraindications, interactions, and monitoring together. For this goal, cross-check safety sections against comorbidities and concurrent therapies, then confirm the relevance of each risk signal to your profile.`;
+  }
+  if (questionLower.includes("monitoring")) {
+    return `Monitoring should match peptide mechanism, goal-specific risks, and treatment context. Use profile monitoring guidance as a baseline, then align labs and follow-up intervals with clinician recommendations and jurisdiction-specific standards.`;
+  }
+  if (questionLower.includes("approved") || questionLower.includes("investigational")) {
+    return `This goal includes both approved and investigational peptides. Use the regulatory badges and evidence claims to separate established indication pathways from exploratory use-case claims before comparing expected outcomes.`;
+  }
+  if (questionLower.includes("how quickly") || questionLower.includes("fast") || questionLower.includes("timeline")) {
+    return `Response timing varies by peptide, endpoint, and study design. Use each peptide page to compare endpoint timing windows and durability signals rather than assuming a uniform time-to-benefit across this goal.`;
+  }
+  if (questionLower.includes("interactions")) {
+    return `Interaction risk depends on mechanism and co-therapy context. In ${goalCard.title.toLowerCase()}, review interaction notes for each profile and prioritize clinician review when combining with endocrine, cardiometabolic, neurologic, or reproductive medications.`;
+  }
+
+  return `Use this goal page to compare peptides mapped to ${useCaseText}. Open each peptide profile to validate evidence links, regulatory context, dosing framework, and safety details before treating any single claim as definitive.`;
+}
+
+function buildGoalFaqEntries(goalCard: HealthGoalCard): GoalFaqEntry[] {
+  const questions = Array.from(new Set([...goalCard.keyQuestions, ...CROSS_GOAL_FAQ_QUESTIONS]));
+  return questions.map((question) => ({
+    question,
+    answer: buildGoalFaqAnswer(goalCard, question)
+  }));
+}
 
 export async function generateStaticParams() {
   return HEALTH_GOAL_DEFINITIONS.map((goal) => ({ slug: goal.slug }));
@@ -52,12 +104,13 @@ export default async function GoalDetailPage({ params }: PageProps) {
   }
 
   const topEvidencePeptides = goalCard.peptides.slice(0, 24);
-  const faqItems = goalCard.keyQuestions.map((question) => ({
+  const faqEntries = buildGoalFaqEntries(goalCard);
+  const faqItems = faqEntries.map((entry) => ({
     "@type": "Question",
-    name: question,
+    name: entry.question,
     acceptedAnswer: {
       "@type": "Answer",
-      text: `Use the linked peptide profiles in this ${goalCard.title.toLowerCase()} category to compare evidence grade, jurisdiction status, dosing context, and safety notes with source-level references.`
+      text: entry.answer
     }
   }));
 
@@ -158,11 +211,19 @@ export default async function GoalDetailPage({ params }: PageProps) {
 
       <section className="card">
         <h2>Common Questions</h2>
-        <ul>
-          {goalCard.keyQuestions.map((question) => (
-            <li key={question}>{question}</li>
+        <p className="muted">
+          Open each question to view a practical answer for comparing peptides in this goal category.
+        </p>
+        <div className="faq-slideout-list">
+          {faqEntries.map((entry, index) => (
+            <details key={entry.question} className="faq-slideout-item" open={index === 0}>
+              <summary>{entry.question}</summary>
+              <div className="faq-slideout-panel">
+                <p>{entry.answer}</p>
+              </div>
+            </details>
           ))}
-        </ul>
+        </div>
       </section>
     </article>
   );

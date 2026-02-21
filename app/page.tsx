@@ -34,9 +34,9 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   const [peptides, vendors] = await Promise.all([listPeptides(), listVendors()]);
-  const healthGoals = buildHealthGoalCards(peptides);
+  const healthGoals = buildHealthGoalCards(peptides, 6, 10);
   const uniqueUseCases = new Set(peptides.flatMap((peptide) => peptide.useCases));
-  const featuredPeptides = uniqueBySlug(healthGoals.flatMap((goal) => goal.peptides)).slice(0, 8);
+  const featuredPeptides = uniqueBySlug(healthGoals.flatMap((goal) => goal.peptides)).slice(0, 10);
   const ratedVendors = vendors.filter((vendor) => vendor.rating !== null);
   const unratedVendors = vendors.filter((vendor) => vendor.rating === null);
   const topRatedVendors = [...ratedVendors].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)).slice(0, 3);
@@ -121,19 +121,16 @@ export default async function HomePage() {
                   {goal.icon}
                 </span>
                 <div>
-                  <h3>{goal.title}</h3>
+                  <h3>
+                    <Link href={`/goals/${goal.slug}`} className="goal-title-link">
+                      {goal.title}
+                    </Link>
+                  </h3>
                   <p className="muted">{goal.subtitle}</p>
                 </div>
               </div>
-              <div style={{ marginBottom: "0.6rem" }}>
-                {goal.matchedUseCases.map((useCase) => (
-                  <Link key={`${goal.slug}-${useCase}`} className="chip chip-link" href={`/peptides?useCase=${encodeURIComponent(useCase)}`}>
-                    {useCase}
-                  </Link>
-                ))}
-              </div>
               <div className="home-link-list">
-                {goal.peptides.slice(0, 3).map((peptide) => {
+                {goal.peptides.slice(0, 10).map((peptide) => {
                   return (
                     <Link
                       key={`${goal.slug}-${peptide.slug}`}
@@ -147,9 +144,6 @@ export default async function HomePage() {
               </div>
               <Link className="btn" href={`/peptides?useCase=${encodeURIComponent(goal.primaryUseCase)}`}>
                 View {goal.peptideCount} {goal.peptideCount === 1 ? "peptide" : "peptides"}
-              </Link>
-              <Link className="btn" href={`/goals/${goal.slug}`}>
-                Explore Goal
               </Link>
             </article>
           ))}
